@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adaptive Access Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.2), 0 0 22px rgba(239, 68, 68, 0.14); }
+            50% { box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.45), 0 0 34px rgba(239, 68, 68, 0.32); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-2px); }
+            40% { transform: translateX(2px); }
+            60% { transform: translateX(-1px); }
+            80% { transform: translateX(1px); }
+        }
+
+        .critical-glow { animation: pulseGlow 1.2s ease-in-out infinite; }
+        .critical-shake { animation: shake 0.35s ease-in-out infinite; }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen relative overflow-x-hidden">
+    <div id="criticalOverlay" class="hidden fixed inset-0 z-40 bg-red-950/35 backdrop-blur-[1px]"></div>
+    <div id="criticalBanner" class="hidden fixed top-4 left-4 right-4 z-50 mx-auto max-w-4xl rounded-2xl border border-red-300 bg-gradient-to-r from-red-950 via-red-900 to-red-800 text-white shadow-2xl shadow-red-950/30 critical-glow">
+        <div class="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+                <div class="text-xs uppercase tracking-[0.24em] text-red-200 font-semibold">⚠ Critical Security Event</div>
+                <div class="mt-1 text-2xl font-bold">Possible session hijacking detected</div>
+                <div class="mt-1 text-sm text-red-100">Session will terminate in <span id="criticalCountdown" class="font-bold text-white">5</span> seconds</div>
+            </div>
+            <div class="rounded-xl border border-red-300/40 bg-white/10 px-4 py-3 text-sm text-red-50">
+                High risk posture requires immediate isolation.
+            </div>
+        </div>
+    </div>
+
+    <nav class="bg-slate-900 text-white shadow relative z-30">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="font-bold">Dynamic Access Control System</div>
+            <div class="flex items-center gap-4 text-sm">
+                <a href="/dashboard" class="px-2 py-1 rounded hover:bg-slate-800">Dashboard</a>
+                <a id="adminAnalyticsLink" href="/admin/analytics" class="hidden px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-700">Admin Analytics</a>
+                <span>User: <span id="usernameDisplay" class="font-semibold"></span></span>
+                <span>Role: <span id="roleDisplay" class="font-semibold uppercase"></span></span>
+                <button onclick="logout()" class="px-3 py-1 rounded bg-red-600 hover:bg-red-700">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <main id="dashboardShell" class="max-w-7xl mx-auto px-4 py-6 space-y-5 transition-transform duration-150">
+        <div id="statusAlert" class="hidden p-4 rounded-2xl border-l-4 shadow-lg"></div>
+
+        <section class="grid sm:grid-cols-3 gap-3">
+            <div id="monitoringPill" class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">🟢 Monitoring Active</div>
+            <div id="suspiciousPill" class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">🟡 Suspicious Activity</div>
+            <div id="criticalPill" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">🔴 Critical Risk</div>
+        </section>
+
+        <section class="grid lg:grid-cols-4 gap-4">
+            <div class="bg-white rounded shadow p-4 border-l-4 border-indigo-500">
+                <h3 class="font-semibold mb-2">Session Context</h3>
+                <div class="text-sm space-y-1">
+                    <div>Device: <span id="ctxDevice" class="font-medium">--</span></div>
+                    <div>IP: <span id="ctxIp" class="font-medium">--</span></div>
+                    <div>Location: <span id="ctxLocation" class="font-medium">--</span></div>
+                    <div>Duration: <span id="sessionUptime" class="font-mono">00:00</span></div>
+                    <div>Monitoring: <span id="ctxMonitoring" class="font-medium text-green-700">Active</span></div>
+                </div>
+            </div>
+
+            <div id="decisionCard" class="bg-white rounded shadow p-4 lg:col-span-3 border-t-4 border-gray-400">
+                <h3 class="font-semibold mb-3">Access Decision</h3>
+                <div class="grid md:grid-cols-6 gap-3 text-sm">
+                    <div><div class="text-gray-500">Risk</div><div id="riskScore" class="text-3xl font-bold">0.0</div></div>
+                    <div><div class="text-gray-500">Trust</div><div id="trustScore" class="text-3xl font-bold">100</div></div>
+                    <div><div class="text-gray-500">Risk Level</div><div id="riskLevelBadge" class="font-semibold">Unknown</div></div>
+                    <div><div class="text-gray-500">Decision</div><div id="accessDecisionText" class="font-semibold">Pending</div></div>
+                    <div><div class="text-gray-500">Protection</div><div id="dataStatusText" class="font-semibold">Protected</div></div>
+                    <div><div class="text-gray-500">Threat</div><div id="threatType" class="font-semibold">Normal user</div></div>
+                </div>
+                <div class="mt-4 h-2 bg-gray-200 rounded"><div id="riskBar" class="h-2 bg-gray-400 rounded" style="width:0%"></div></div>
+            </div>
+        </section>
+
+        <section class="grid lg:grid-cols-3 gap-4">
+            <div class="bg-white rounded shadow p-4 lg:col-span-2">
+                <h3 class="font-semibold mb-3">Risk Score Breakdown</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3 text-sm">
+                    <div class="bg-gray-50 p-2 rounded">Typing: <span id="scoreTyping" class="font-bold">+0</span></div>
+                    <div class="bg-gray-50 p-2 rounded">Mouse: <span id="scoreMouse" class="font-bold">+0</span></div>
+                    <div class="bg-gray-50 p-2 rounded">IP: <span id="scoreIp" class="font-bold">+0</span></div>
+                    <div class="bg-gray-50 p-2 rounded">Session: <span id="scoreSession" class="font-bold">+0</span></div>
+                </div>
+                <div id="riskFactorsList" class="space-y-2 text-sm"></div>
+            </div>
+            <div class="bg-white rounded shadow p-4">
+                <h3 class="font-semibold mb-3">Behavior Timeline</h3>
+                <div id="timelineLog" class="space-y-2 text-sm max-h-56 overflow-y-auto">
+                    <div class="text-gray-500">[--:--:--] Login</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="grid lg:grid-cols-2 gap-4">
+            <div class="bg-white rounded shadow p-4">
+                <h3 class="font-semibold mb-3">Sensitive Data Vault</h3>
+                <div id="restrictedOverlay" class="hidden p-4 bg-red-50 border border-red-300 rounded mb-3 text-red-700 font-semibold">
+                    Access denied: critical risk.
+                </div>
+                <div id="sensitiveDataContainer" class="space-y-2 text-sm">
+                    <div>User ID: <span id="userIdDisplay" class="font-medium">--</span></div>
+                    <div>Account Balance: <span id="accountBalance" class="font-medium">$145,250.00</span></div>
+                    <div>Last Login IP: <span id="lastLoginIp" class="font-medium">192.168.1.105</span></div>
+                </div>
+            </div>
+            <div class="bg-white rounded shadow p-4">
+                <h3 class="font-semibold mb-3">Protected Resource Access</h3>
+                <button id="resourceBtn" class="px-3 py-2 rounded bg-slate-800 text-white hover:bg-slate-900">Request Sensitive Data</button>
+                <div id="resourceResult" class="mt-3 text-sm text-gray-700">No request yet.</div>
+            </div>
+        </section>
+
+        <section class="grid lg:grid-cols-3 gap-4">
+            <div class="bg-white rounded shadow p-4 lg:col-span-2">
+                <h3 class="font-semibold mb-3">Why system made this decision</h3>
+                <ul id="explainList" class="list-disc pl-5 text-sm space-y-1"></ul>
+                <div id="explainConclusion" class="mt-3 p-2 rounded bg-gray-50 text-sm"></div>
+            </div>
+            <div class="bg-white rounded shadow p-4">
+                <h3 class="font-semibold mb-3">System Flow</h3>
+                <div class="text-sm text-gray-700">User → Sensors → Behavior → Risk Engine → Access Control → Protected Resource</div>
+            </div>
+        </section>
+
+        <section class="bg-white rounded shadow p-4">
+            <h3 class="font-semibold mb-3">Demo Scenario Control Panel</h3>
+            <div class="flex flex-wrap gap-2">
+                <button class="scenarioBtn px-3 py-2 rounded bg-green-600 text-white" data-scenario="normal">Run Normal Scenario</button>
+                <button class="scenarioBtn px-3 py-2 rounded bg-yellow-500 text-white" data-scenario="suspicious">Run Suspicious Scenario</button>
+                <button class="scenarioBtn px-3 py-2 rounded bg-red-600 text-white" data-scenario="high-risk">Run High-Risk Scenario</button>
+                <button id="resetBaselineBtn" class="px-3 py-2 rounded bg-slate-700 text-white">Reset Baseline</button>
+                <button id="verifyBtn" class="hidden px-3 py-2 rounded bg-indigo-600 text-white">Verify Identity</button>
+            </div>
+        </section>
+    </main>
+
+    <div id="otpModal" class="hidden fixed inset-0 bg-black/50 items-center justify-center">
+        <div class="bg-white p-5 rounded shadow w-80">
+            <h3 class="font-semibold mb-2">Step-up Authentication</h3>
+            <p class="text-sm text-gray-600 mb-3">Enter OTP code: <b>123456</b></p>
+            <input id="otpInput" class="w-full border rounded px-3 py-2 mb-3" placeholder="OTP">
+            <div class="flex justify-end gap-2">
+                <button onclick="closeOtpModal()" class="px-3 py-2 rounded border">Cancel</button>
+                <button id="otpSubmitBtn" class="px-3 py-2 rounded bg-indigo-600 text-white">Verify</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/sensor.js"></script>
+    <script>
+        const token = localStorage.getItem('access_token');
+        const username = localStorage.getItem('username');
+        const userId = localStorage.getItem('user_id');
+        const role = localStorage.getItem('role') || 'employee';
+        const hasStoredToken = Boolean(token);
+        if (hasStoredToken && !token) window.location.href = '/login';
+
+        document.getElementById('usernameDisplay').textContent = username || 'unknown';
+        document.getElementById('roleDisplay').textContent = role;
+        document.getElementById('userIdDisplay').textContent = userId || '--';
+        if (role === 'admin') {
+            document.getElementById('adminAnalyticsLink').classList.remove('hidden');
+        }
+
+        let killSwitchTimer = null;
+        let killSwitchSeconds = 5;
+        let criticalEventLogged = false;
+        let criticalModeActive = false;
+
+        function setSecurityPills(mode) {
+            const monitoring = document.getElementById('monitoringPill');
+            const suspicious = document.getElementById('suspiciousPill');
+            const critical = document.getElementById('criticalPill');
+            const active = 'ring-2 ring-offset-2 ring-offset-slate-100 shadow-lg';
+            monitoring.className = 'rounded-2xl border px-4 py-3 text-sm font-semibold transition';
+            suspicious.className = 'rounded-2xl border px-4 py-3 text-sm font-semibold transition';
+            critical.className = 'rounded-2xl border px-4 py-3 text-sm font-semibold transition';
+            if (mode === 'critical') {
+                critical.className += ' border-rose-300 bg-rose-600 text-white ' + active;
+                suspicious.className += ' border-amber-200 bg-amber-50 text-amber-700 opacity-70';
+                monitoring.className += ' border-emerald-200 bg-emerald-50 text-emerald-700 opacity-70';
+            } else if (mode === 'suspicious') {
+                suspicious.className += ' border-amber-300 bg-amber-500 text-white ' + active;
+                monitoring.className += ' border-emerald-200 bg-emerald-50 text-emerald-700 opacity-75';
+                critical.className += ' border-rose-200 bg-rose-50 text-rose-700 opacity-70';
+            } else {
+                monitoring.className += ' border-emerald-300 bg-emerald-500 text-white ' + active;
+                suspicious.className += ' border-amber-200 bg-amber-50 text-amber-700 opacity-70';
+                critical.className += ' border-rose-200 bg-rose-50 text-rose-700 opacity-70';
+            }
+        }
+
+        async function logSecurityEvent(action, message, riskScore = 0) {
+            const payload = JSON.stringify({ action, message, risk_score: riskScore });
+            try {
+                if (navigator.sendBeacon) {
+                    const sent = navigator.sendBeacon('/api/security-event', new Blob([payload], { type: 'application/json' }));
+                    if (sent) return;
+                }
+                const headers = { 'Content-Type': 'application/json' };
+                if (token) {
+                    headers.Authorization = `Bearer ${token}`;
+                }
+                await fetch('/api/security-event', {
+                    method: 'POST',
+                    headers,
+                    body: payload,
+                    keepalive: true
+                });
+            } catch (error) {
+                console.warn('Failed to log security event:', error);
+            }
+        }
+
+        function api(path, method='GET', body=null) {
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) {
+                headers.Authorization = `Bearer ${token}`;
+            }
+            return fetch(path, {
+                method,
+                headers,
+                body: body ? JSON.stringify(body) : null
+            });
+        }
+
+        function logEvent(message) {
+            const t = new Date().toLocaleTimeString();
+            const row = document.createElement('div');
+            row.textContent = `[${t}] ${message}`;
+            const wrap = document.getElementById('timelineLog');
+            wrap.prepend(row);
+            if (wrap.children.length > 25) wrap.removeChild(wrap.lastChild);
+        }
+
+        function logout() {
+            clearInterval(killSwitchTimer);
+            criticalEventLogged = false;
+            criticalModeActive = false;
+            document.getElementById('criticalOverlay').classList.add('hidden');
+            document.getElementById('criticalBanner').classList.add('hidden');
+            document.getElementById('dashboardShell').classList.remove('critical-shake');
+            document.cookie = 'access_token=; Max-Age=0; path=/; SameSite=Lax';
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('user_id');
+            localStorage.removeItem('username');
+            localStorage.removeItem('role');
+            localStorage.removeItem('loginTime');
+            window.location.href = '/login';
+        }
+
+        function startKillSwitch(risk) {
+            if (criticalModeActive && killSwitchTimer) {
+                return;
+            }
+            clearInterval(killSwitchTimer);
+            criticalModeActive = true;
+            killSwitchSeconds = 5;
+            const banner = document.getElementById('criticalBanner');
+            const overlay = document.getElementById('criticalOverlay');
+            const shell = document.getElementById('dashboardShell');
+            banner.classList.remove('hidden');
+            overlay.classList.remove('hidden');
+            shell.classList.add('critical-shake');
+            document.getElementById('criticalCountdown').textContent = killSwitchSeconds;
+            if (!criticalEventLogged) {
+                criticalEventLogged = true;
+                logSecurityEvent('critical_session_triggered', 'Possible session hijacking detected. Countdown started.', risk);
+            }
+            killSwitchTimer = setInterval(() => {
+                killSwitchSeconds -= 1;
+                document.getElementById('criticalCountdown').textContent = killSwitchSeconds;
+                if (killSwitchSeconds <= 0) {
+                    clearInterval(killSwitchTimer);
+                    logSecurityEvent('critical_session_terminated', 'Critical risk exceeded. Session terminated automatically.', risk).finally(() => {
+                        logout();
+                    });
+                } else {
+                    document.getElementById('criticalCountdown').textContent = killSwitchSeconds;
+                }
+            }, 1000);
+        }
+
+        function closeOtpModal() {
+            document.getElementById('otpModal').classList.add('hidden');
+            document.getElementById('otpModal').classList.remove('flex');
+        }
+        window.closeOtpModal = closeOtpModal;
+
+        async function applyDecision(raw) {
+            const risk = Number(raw.risk_score || 0);
+            const trust = Number(raw.trust_score ?? Math.max(0, 100 - risk));
+            const reasons = raw.reasons || ['No anomalies detected'];
+            const breakdown = raw.score_breakdown || {};
+            const posture = risk >= 80 || raw.kill_switch ? 'critical' : (risk > 50 ? 'suspicious' : 'monitoring');
+
+            setSecurityPills(posture);
+
+            document.getElementById('riskScore').textContent = risk.toFixed(1);
+            document.getElementById('trustScore').textContent = `${trust.toFixed(1)} ${risk > 50 ? '↓' : '↑'}`;
+            document.getElementById('riskLevelBadge').textContent = raw.risk_level || 'Unknown';
+            document.getElementById('accessDecisionText').textContent = raw.access_decision || raw.message || 'Pending';
+            document.getElementById('dataStatusText').textContent = raw.data_protection || 'Protected';
+            document.getElementById('threatType').textContent = raw.threat_type || 'Normal user';
+            document.getElementById('riskBar').style.width = `${Math.min(100, risk)}%`;
+
+            if (posture === 'critical') {
+                document.getElementById('statusAlert').className = 'p-4 rounded-2xl border-l-4 border-red-600 bg-red-50 text-red-800 shadow-lg';
+                document.getElementById('statusAlert').textContent = raw.final_access_decision || 'Session locked due to critical risk';
+                document.getElementById('statusAlert').classList.remove('hidden');
+                if (!criticalModeActive) {
+                    startKillSwitch(risk);
+                }
+            } else if (posture === 'suspicious') {
+                document.getElementById('statusAlert').className = 'p-4 rounded-2xl border-l-4 border-amber-500 bg-amber-50 text-amber-900 shadow-lg';
+                document.getElementById('statusAlert').textContent = raw.requires_mfa ? 'Step-up authentication required' : (raw.access_decision || 'Suspicious activity detected.');
+                document.getElementById('statusAlert').classList.remove('hidden');
+            } else {
+                document.getElementById('statusAlert').classList.add('hidden');
+                clearInterval(killSwitchTimer);
+                criticalEventLogged = false;
+                criticalModeActive = false;
+                document.getElementById('criticalOverlay').classList.add('hidden');
+                document.getElementById('criticalBanner').classList.add('hidden');
+                document.getElementById('dashboardShell').classList.remove('critical-shake');
+            }
+
+            document.getElementById('scoreTyping').textContent = `+${breakdown["Typing Anomaly"] || 0}`;
+            document.getElementById('scoreMouse').textContent = `+${breakdown["Mouse Anomaly"] || 0}`;
+            document.getElementById('scoreIp').textContent = `+${breakdown["IP Change"] || 0}`;
+            document.getElementById('scoreSession').textContent = `+${breakdown["Session Anomaly"] || 0}`;
+
+            const factors = document.getElementById('riskFactorsList');
+            factors.innerHTML = '';
+            reasons.forEach((r) => {
+                const div = document.createElement('div');
+                div.className = 'p-2 rounded bg-gray-50 border text-sm';
+                div.textContent = r;
+                factors.appendChild(div);
+            });
+
+            const explain = raw.explainability || { highlights: reasons, conclusion: 'Behavioral risk evaluated.' };
+            const explainList = document.getElementById('explainList');
+            explainList.innerHTML = '';
+            (explain.highlights || []).forEach((h) => {
+                const li = document.createElement('li');
+                li.textContent = h;
+                explainList.appendChild(li);
+            });
+            document.getElementById('explainConclusion').textContent = explain.conclusion || '';
+
+            const verifyBtn = document.getElementById('verifyBtn');
+            const overlay = document.getElementById('restrictedOverlay');
+            const sensitive = document.getElementById('sensitiveDataContainer');
+            if (raw.requires_mfa) {
+                verifyBtn.classList.remove('hidden');
+                sensitive.classList.add('blur-sm');
+                document.getElementById('accountBalance').textContent = '$***,***.**';
+                document.getElementById('lastLoginIp').textContent = '***.***.*.*';
+                logEvent(`Risk escalated → Medium`);
+                logEvent(`Step-up requested`);
+            } else {
+                verifyBtn.classList.add('hidden');
+            }
+
+            if (raw.kill_switch || risk > 70) {
+                overlay.classList.remove('hidden');
+                sensitive.classList.add('blur-md');
+                logEvent(`Risk escalated → High/Critical`);
+            } else {
+                overlay.classList.add('hidden');
+                sensitive.classList.remove('blur-md');
+                if (!raw.requires_mfa) {
+                    sensitive.classList.remove('blur-sm');
+                    document.getElementById('accountBalance').textContent = role === 'employee' ? '$***,***.**' : '$145,250.00';
+                    document.getElementById('lastLoginIp').textContent = role === 'employee' ? '***.***.*.*' : '192.168.1.105';
+                }
+            }
+            logEvent(`Decision: ${raw.access_decision || raw.message}`);
+        }
+
+        document.getElementById('verifyBtn').addEventListener('click', () => {
+            document.getElementById('otpModal').classList.remove('hidden');
+            document.getElementById('otpModal').classList.add('flex');
+        });
+
+        document.getElementById('otpSubmitBtn').addEventListener('click', async () => {
+            const otp = document.getElementById('otpInput').value.trim();
+            const res = await api('/api/step-up-verify', 'POST', { otp });
+            if (res.ok) {
+                closeOtpModal();
+                logEvent('Step-up successful. Restrictions reduced.');
+                document.getElementById('statusAlert').className = 'p-4 rounded border-l-4 border-green-600 bg-green-50 text-green-800';
+                document.getElementById('statusAlert').textContent = 'Identity verified. Temporary reduction of restrictions applied.';
+                document.getElementById('statusAlert').classList.remove('hidden');
+            } else {
+                logEvent('Step-up failed');
+                alert('Invalid OTP');
+            }
+        });
+
+        document.querySelectorAll('.scenarioBtn').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+                const scenario = btn.dataset.scenario;
+                const res = await api('/api/demo-scenario', 'POST', { scenario });
+                const data = await res.json();
+                await applyDecision(data);
+                logEvent(`Scenario executed: ${scenario}`);
+            });
+        });
+
+        document.getElementById('resetBaselineBtn').addEventListener('click', async () => {
+            const res = await api('/api/reset-baseline', 'POST');
+            const data = await res.json();
+            logEvent(data.message || 'Baseline reset');
+        });
+
+        document.getElementById('resourceBtn').addEventListener('click', async () => {
+            const res = await api('/api/protected-resource');
+            const out = document.getElementById('resourceResult');
+            let payload = {};
+            try {
+                payload = await res.json();
+            } catch (error) {
+                payload = {};
+            }
+            if (res.status === 200) {
+                out.textContent = `200 OK: ${payload.final_access_decision || payload.decision || 'resource granted'}`;
+                logEvent('Protected resource: 200 OK');
+            } else if (res.status === 403) {
+                out.textContent = payload.detail || '403 Forbidden: access denied.';
+                logEvent(payload.detail || 'Protected resource: 403 Forbidden');
+            } else if (res.status === 423) {
+                out.textContent = payload.detail || '423 Locked: session locked due to critical risk.';
+                logEvent(payload.detail || 'Protected resource: 423 Locked');
+            } else {
+                out.textContent = payload.detail || 'Request failed.';
+            }
+        });
+
+        window.addEventListener('behaviorAnalyzed', (event) => {
+            applyDecision(event.detail.rawData || event.detail);
+        });
+
+        async function loadSessionContext() {
+            const loginTime = localStorage.getItem('loginTime') || Date.now().toString();
+            const res = await fetch('/api/session-context', { headers: { 'Authorization': `Bearer ${token}`, 'x-login-time': loginTime } });
+            if (res.status === 401 || res.status === 423) {
+                logout();
+                return;
+            }
+            if (!res.ok) return;
+            const c = await res.json();
+            document.getElementById('ctxDevice').textContent = c.device;
+            document.getElementById('ctxIp').textContent = c.ip;
+            document.getElementById('ctxLocation').textContent = c.location;
+            document.getElementById('ctxMonitoring').textContent = c.monitoring_status;
+        }
+
+        setInterval(() => {
+            const loginTime = Number(localStorage.getItem('loginTime') || Date.now());
+            const diff = Math.floor((Date.now() - loginTime) / 1000);
+            const m = String(Math.floor(diff / 60)).padStart(2, '0');
+            const s = String(diff % 60).padStart(2, '0');
+            document.getElementById('sessionUptime').textContent = `${m}:${s}`;
+        }, 1000);
+
+        logEvent('Login');
+        loadSessionContext();
+    </script>
+</body>
+</html>

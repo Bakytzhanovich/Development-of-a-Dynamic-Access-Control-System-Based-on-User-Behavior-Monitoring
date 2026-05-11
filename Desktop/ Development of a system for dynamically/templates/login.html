@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Dynamic Access Control System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Genesis Design Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/static/i18n.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'genesis-bg': '#FAFAFA',
+                        'genesis-surface': '#FFFFFF',
+                        'genesis-text': '#0A0A0A',
+                        'genesis-secondary': '#6B6B6B',
+                        'genesis-border': '#E8E8EC',
+                        'genesis-primary': '#6366F1',
+                        'genesis-primary-hover': '#4F46E5',
+                    },
+                    fontFamily: {
+                        'sans': ['DM Sans', 'system-ui', 'sans-serif'],
+                        'mono': ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --bg: #FAFAFA;
+            --surface: #FFFFFF;
+            --text: #0A0A0A;
+            --text-secondary: #6B6B6B;
+            --border: #E8E8EC;
+            --primary: #6366F1;
+            --primary-hover: #4F46E5;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --error: #EF4444;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes staggerFadeIn {
+            0% {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        .stagger-fade-in {
+            animation: staggerFadeIn 0.5s ease-out both;
+        }
+
+        .stagger-delay-1 { animation-delay: 0.1s; }
+        .stagger-delay-2 { animation-delay: 0.2s; }
+        .stagger-delay-3 { animation-delay: 0.3s; }
+
+        .card {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .card:hover {
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+            border-radius: 6px;
+            padding: 10px 16px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+        }
+
+        .btn-primary:active {
+            transform: translateY(1px);
+        }
+
+        .input-field {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 6px;
+            padding: 10px 14px;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+        }
+
+        .input-field::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .alert {
+            border-radius: 6px;
+            padding: 10px 14px;
+            font-size: 13px;
+            border: 1px solid;
+        }
+
+        .alert-error {
+            background-color: #FEF2F2;
+            border-color: #FECACA;
+            color: var(--error);
+        }
+
+        .alert-warning {
+            background-color: #FFFBEB;
+            border-color: #FED7AA;
+            color: var(--warning);
+        }
+
+        .alert-info {
+            background-color: #F0F9FF;
+            border-color: #BAE6FD;
+            color: var(--primary);
+        }
+
+        .language-switch {
+            display: flex;
+            gap: 6px;
+            padding: 4px;
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+
+        .language-switch button {
+            padding: 6px 12px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .language-switch button.active {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .language-switch button:hover:not(.active) {
+            color: var(--text);
+            background-color: rgba(99, 102, 241, 0.08);
+        }
+
+        .shake {
+            animation: shake 0.35s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-3px); }
+            50% { transform: translateX(3px); }
+            75% { transform: translateX(-2px); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 sm:p-6">
+    <div class="w-full max-w-md">
+        <!-- Header with Language Switcher -->
+        <div class="flex items-center justify-between mb-12 stagger-fade-in">
+            <div>
+                <h1 class="text-2xl font-bold" data-i18n="login.platformTitle">Dynamic Access Control System</h1>
+                <p class="text-sm text-[var(--text-secondary)] mt-1" data-i18n="login.platformSubtitle">Monitor behavior in real time</p>
+            </div>
+            <div class="language-switch">
+                <button class="active" data-lang="en" onclick="switchLanguage('en')">EN</button>
+                <button data-lang="ru" onclick="switchLanguage('ru')">РУ</button>
+                <button data-lang="kk" onclick="switchLanguage('kk')">ҚҚ</button>
+            </div>
+        </div>
+
+        <!-- Login Card -->
+        <div class="card stagger-fade-in stagger-delay-1 p-8">
+            <h2 class="text-xl font-bold mb-2" data-i18n="login.title">Welcome Back</h2>
+            <p class="text-sm text-[var(--text-secondary)] mb-6" data-i18n="login.subtitle">Sign in to continue</p>
+
+            <form id="loginForm" class="space-y-4">
+                <!-- Username -->
+                <div>
+                    <label for="username" class="block text-sm font-medium mb-2" data-i18n="login.username">Username</label>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username" 
+                        required
+                        class="input-field w-full"
+                        data-i18n-placeholder="login.username"
+                        placeholder="Username"
+                    >
+                </div>
+
+                <!-- Password -->
+                <div>
+                    <label for="password" class="block text-sm font-medium mb-2" data-i18n="login.password">Password</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        required
+                        class="input-field w-full"
+                        data-i18n-placeholder="login.password"
+                        placeholder="Password"
+                    >
+                </div>
+
+                <!-- Error Messages -->
+                <div id="errorMessage" class="alert alert-error hidden fade-in"></div>
+                <div id="warningMessage" class="alert alert-warning hidden fade-in"></div>
+                <div id="lockMessage" class="alert alert-info hidden fade-in">
+                    <strong data-i18n="login.accountLocked">Account temporarily locked</strong>
+                    <div class="mt-1">
+                        <span data-i18n="login.retryIn">Retry in</span>
+                        <strong id="lockCountdown">--</strong>
+                        <span data-i18n="login.seconds">seconds</span>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <button 
+                    id="submitBtn"
+                    type="submit" 
+                    class="btn-primary w-full mt-6 text-sm font-medium"
+                    data-i18n="login.login"
+                >
+                    Login
+                </button>
+            </form>
+        </div>
+
+        <!-- Demo Accounts Info -->
+        <div class="card stagger-fade-in stagger-delay-2 p-4 mt-4 text-center text-sm bg-blue-50 border-blue-200">
+            <strong class="text-[var(--primary)]" data-i18n="login.demoAccounts">Demo Accounts</strong>
+            <p class="text-[var(--text-secondary)] text-xs mt-1 font-mono">
+                admin/admin123 | employee/employee123 | auditor/auditor123
+            </p>
+        </div>
+
+        <!-- Platform Features -->
+        <div class="mt-8 space-y-2 text-sm text-[var(--text-secondary)] stagger-fade-in stagger-delay-3">
+            <p class="flex items-start gap-2">
+                <span class="inline-block w-1.5 h-1.5 rounded-full bg-[var(--primary)] mt-1.5 flex-shrink-0"></span>
+                <span data-i18n="login.feature1">Live risk scoring from keystroke and mouse signals</span>
+            </p>
+            <p class="flex items-start gap-2">
+                <span class="inline-block w-1.5 h-1.5 rounded-full bg-[var(--primary)] mt-1.5 flex-shrink-0"></span>
+                <span data-i18n="login.feature2">Step-up authentication when confidence drops</span>
+            </p>
+            <p class="flex items-start gap-2">
+                <span class="inline-block w-1.5 h-1.5 rounded-full bg-[var(--primary)] mt-1.5 flex-shrink-0"></span>
+                <span data-i18n="login.feature3">Role-aware access decisions and resource masking</span>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Initialize language
+        function initLanguage() {
+            const lang = getLanguage();
+            updateLanguageButton(lang);
+            updatePageText(lang);
+        }
+
+        function switchLanguage(lang) {
+            setLanguage(lang);
+            updateLanguageButton(lang);
+            updatePageText(lang);
+        }
+
+        function updateLanguageButton(lang) {
+            document.querySelectorAll('.language-switch button').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.lang === lang);
+            });
+        }
+
+        function updatePageText(lang) {
+            // Update elements with data-i18n attribute
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.dataset.i18n;
+                el.textContent = t(key, lang);
+            });
+
+            // Update placeholders with data-i18n-placeholder attribute
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.dataset.i18nPlaceholder;
+                el.placeholder = t(key, lang);
+            });
+
+            // Update button text if it's showing a loading state
+            const submitBtn = document.getElementById('submitBtn');
+            if (submitBtn.textContent === 'Signing in...') {
+                submitBtn.textContent = t('login.signin', lang);
+            } else if (submitBtn.textContent === 'Locked') {
+                submitBtn.textContent = t('login.locked', lang);
+            } else {
+                submitBtn.textContent = t('login.login', lang);
+            }
+        }
+
+        let lockTimer = null;
+
+        function showMessage(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.classList.remove('hidden');
+            element.classList.add('fade-in');
+        }
+
+        function hideMessage(elementId) {
+            const element = document.getElementById(elementId);
+            element.classList.add('hidden');
+            element.classList.remove('fade-in');
+        }
+
+        function clearAuthFeedback() {
+            hideMessage('errorMessage');
+            hideMessage('warningMessage');
+            hideMessage('lockMessage');
+            document.getElementById('loginForm').classList.remove('shake');
+        }
+
+        function startLockCountdown(lockUntilIso) {
+            const lockMessage = document.getElementById('lockMessage');
+            const countdown = document.getElementById('lockCountdown');
+            const submitBtn = document.getElementById('submitBtn');
+            const lockUntil = new Date(lockUntilIso).getTime();
+
+            if (lockTimer) clearInterval(lockTimer);
+
+            const tick = () => {
+                const remaining = Math.max(0, Math.ceil((lockUntil - Date.now()) / 1000));
+                countdown.textContent = remaining;
+                submitBtn.disabled = remaining > 0;
+                if (remaining <= 0) {
+                    clearInterval(lockTimer);
+                    lockTimer = null;
+                    hideMessage('lockMessage');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = t('login.login', getLanguage());
+                    localStorage.removeItem('auth_lock_until');
+                    localStorage.removeItem('auth_lock_reason');
+                }
+            };
+
+            lockMessage.classList.remove('hidden');
+            lockMessage.classList.add('fade-in');
+            localStorage.setItem('auth_lock_until', lockUntilIso);
+            localStorage.setItem('auth_lock_reason', t('login.accountLocked', getLanguage()));
+            tick();
+            lockTimer = setInterval(tick, 1000);
+        }
+
+        // Check for existing lock
+        const storedLockUntil = localStorage.getItem('auth_lock_until');
+        if (storedLockUntil && Date.now() < new Date(storedLockUntil).getTime()) {
+            startLockCountdown(storedLockUntil);
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const submitBtn = document.getElementById('submitBtn');
+            const lang = getLanguage();
+            
+            clearAuthFeedback();
+            submitBtn.disabled = true;
+            submitBtn.textContent = t('login.signin', lang);
+            
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        username: username.trim(), 
+                        password: password.trim() 
+                    }),
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Store token
+                    localStorage.setItem('access_token', data.access_token);
+                    localStorage.setItem('user_id', data.user_id);
+                    localStorage.setItem('username', data.username);
+                    localStorage.setItem('role', data.role);
+                    localStorage.setItem('loginTime', Date.now().toString());
+                    localStorage.removeItem('auth_lock_until');
+                    localStorage.removeItem('auth_lock_reason');
+                    
+                    // Redirect to dashboard
+                    window.location.href = '/dashboard';
+                } else {
+                    document.getElementById('loginForm').classList.add('shake');
+
+                    const errorText = data.detail || t('login.error', lang);
+                    showMessage('errorMessage', errorText);
+
+                    if (data.warning_message && response.status === 401) {
+                        showMessage('warningMessage', data.warning_message);
+                    }
+
+                    if (response.status === 423) {
+                        const lockedUntil = data.account_locked_until || new Date(Date.now() + ((data.retry_after_seconds || 300) * 1000)).toISOString();
+                        showMessage('lockMessage', t('login.accountLocked', lang));
+                        startLockCountdown(lockedUntil);
+                        submitBtn.disabled = true;
+                        submitBtn.textContent = t('login.locked', lang);
+                    }
+                    
+                    // Clear password field on error
+                    document.getElementById('password').value = '';
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showMessage('errorMessage', 'An error occurred. Please check your connection and try again.');
+            } finally {
+                if (!document.getElementById('lockMessage').classList.contains('hidden')) {
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = t('login.locked', lang);
+                } else {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = t('login.login', lang);
+                }
+            }
+        });
+
+        // Listen for language change events
+        window.addEventListener('languageChanged', (e) => {
+            updatePageText(e.detail.language);
+        });
+
+        // Initialize on page load
+        initLanguage();
+    </script>
+</body>
+</html>

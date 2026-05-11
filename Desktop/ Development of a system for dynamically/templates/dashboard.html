@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Dynamic Access Control System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/static/i18n.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'genesis-bg': '#FAFAFA',
+                        'genesis-surface': '#FFFFFF',
+                        'genesis-text': '#0A0A0A',
+                        'genesis-secondary': '#6B6B6B',
+                        'genesis-border': '#E8E8EC',
+                        'genesis-primary': '#6366F1',
+                        'genesis-primary-hover': '#4F46E5',
+                    },
+                    fontFamily: {
+                        'sans': ['DM Sans', 'system-ui', 'sans-serif'],
+                        'mono': ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --bg: #FAFAFA;
+            --surface: #FFFFFF;
+            --text: #0A0A0A;
+            --text-secondary: #6B6B6B;
+            --border: #E8E8EC;
+            --primary: #6366F1;
+            --primary-hover: #4F46E5;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --error: #EF4444;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes criticalPulse {
+            0%, 100% { box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.2), 0 0 20px rgba(239, 68, 68, 0.15); }
+            50% { box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.4), 0 0 30px rgba(239, 68, 68, 0.25); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-2px); }
+            50% { transform: translateX(2px); }
+            75% { transform: translateX(-1px); }
+        }
+
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        .critical-glow { animation: criticalPulse 1.2s ease-in-out infinite; }
+        .critical-shake { animation: shake 0.3s ease-in-out infinite; }
+
+        .card {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease;
+        }
+
+        .card:hover {
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        .btn {
+            border-radius: 6px;
+            padding: 10px 16px;
+            font-weight: 500;
+            font-size: 13px;
+            transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+        }
+
+        .btn-secondary {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        .btn-secondary:hover {
+            background-color: rgba(99, 102, 241, 0.08);
+        }
+
+        .btn-danger {
+            background-color: var(--error);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #DC2626;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-low {
+            background-color: #DBEAFE;
+            color: #1E40AF;
+        }
+
+        .badge-medium {
+            background-color: #FEF3C7;
+            color: #92400E;
+        }
+
+        .badge-high {
+            background-color: #FECACA;
+            color: #7F1D1D;
+        }
+
+        .badge-critical {
+            background-color: #FCA5A5;
+            color: #7F1D1D;
+            animation: criticalPulse 1.5s ease-in-out infinite;
+        }
+
+        .risk-bar {
+            height: 6px;
+            background-color: var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .risk-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10B981 0%, #F59E0B 50%, #EF4444 100%);
+            transition: width 0.3s ease;
+        }
+
+        .status-bar {
+            padding: 12px 16px;
+            border-radius: 6px;
+            border-left: 4px solid;
+            margin-bottom: 16px;
+        }
+
+        .status-bar-info {
+            border-color: var(--primary);
+            background-color: rgba(99, 102, 241, 0.08);
+            color: var(--primary);
+        }
+
+        .status-bar-warning {
+            border-color: var(--warning);
+            background-color: rgba(245, 158, 11, 0.08);
+            color: #B45309;
+        }
+
+        .status-bar-error {
+            border-color: var(--error);
+            background-color: rgba(239, 68, 68, 0.08);
+            color: #991B1B;
+        }
+
+        .status-bar-success {
+            border-color: var(--success);
+            background-color: rgba(16, 185, 129, 0.08);
+            color: #065F46;
+        }
+
+        .risk-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            border: 1px solid;
+        }
+
+        .risk-pill-low {
+            background-color: #ECFDF5;
+            border-color: #CCFBF1;
+            color: #047857;
+        }
+
+        .risk-pill-medium {
+            background-color: #FFFBEB;
+            border-color: #FEF3C7;
+            color: #B45309;
+        }
+
+        .risk-pill-high {
+            background-color: #FEF2F2;
+            border-color: #FECACA;
+            color: #7F1D1D;
+        }
+
+        .risk-pill-critical {
+            background-color: #FEF2F2;
+            border-color: #FECACA;
+            color: #991B1B;
+            animation: criticalPulse 1.5s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Navigation -->
+    <nav class="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--surface)] backdrop-blur-sm">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="font-semibold text-sm" data-i18n="nav.dashboard" style="color: var(--primary);">Dashboard</div>
+            <div class="flex items-center gap-4 text-sm">
+                <a id="adminAnalyticsLink" href="/admin/analytics" class="hidden px-3 py-2 rounded-6px text-[var(--primary)] hover:bg-blue-50 font-medium" data-i18n="nav.adminAnalytics">Admin Analytics</a>
+                <div class="flex items-center gap-2 text-[var(--text-secondary)]">
+                    <span data-i18n="nav.user">User</span>: <span id="usernameDisplay" class="font-semibold text-[var(--text)]">--</span>
+                </div>
+                <div class="flex items-center gap-2 text-[var(--text-secondary)]">
+                    <span data-i18n="nav.role">Role</span>: <span id="roleDisplay" class="font-semibold text-[var(--text)]">--</span>
+                </div>
+                <!-- Language Switcher -->
+                <div class="language-switch" style="display: flex; gap: 6px; padding: 4px; background-color: var(--surface); border: 1px solid var(--border); border-radius: 6px;">
+                    <button class="active" data-lang="en" onclick="switchLanguage('en')" style="padding: 6px 12px; border: none; background: transparent; cursor: pointer; font-size: 12px; font-weight: 500; color: var(--text-secondary); border-radius: 4px; transition: all 0.2s ease;" onmouseover="this.style.backgroundColor='rgba(99, 102, 241, 0.08)'" onmouseout="this.style.backgroundColor='transparent'">EN</button>
+                    <button data-lang="ru" onclick="switchLanguage('ru')" style="padding: 6px 12px; border: none; background: transparent; cursor: pointer; font-size: 12px; font-weight: 500; color: var(--text-secondary); border-radius: 4px; transition: all 0.2s ease;" onmouseover="this.style.backgroundColor='rgba(99, 102, 241, 0.08)'" onmouseout="this.style.backgroundColor='transparent'">РУ</button>
+                    <button data-lang="kk" onclick="switchLanguage('kk')" style="padding: 6px 12px; border: none; background: transparent; cursor: pointer; font-size: 12px; font-weight: 500; color: var(--text-secondary); border-radius: 4px; transition: all 0.2s ease;" onmouseover="this.style.backgroundColor='rgba(99, 102, 241, 0.08)'" onmouseout="this.style.backgroundColor='transparent'">ҚҚ</button>
+                </div>
+                <button onclick="logout()" class="btn btn-danger" data-i18n="nav.logout">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Critical Mode Banner -->
+    <div id="criticalBanner" class="hidden fixed top-20 left-4 right-4 z-50 mx-auto max-w-4xl card border-[var(--error)] bg-red-50 critical-glow p-4 sm:p-5">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+                <div class="text-xs uppercase tracking-wide font-semibold text-[var(--error)]" data-i18n="critical.event">Critical Security Event</div>
+                <div class="mt-1 text-lg font-bold text-[var(--text)]" data-i18n="critical.title">Possible session hijacking detected</div>
+                <div class="mt-1 text-sm text-[var(--text-secondary)]">
+                    <span data-i18n="critical.terminate">Session will terminate in</span>
+                    <span id="criticalCountdown" class="font-bold text-[var(--error)]">5</span>
+                    <span data-i18n="critical.isolation">seconds</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+        <!-- Status Alert -->
+        <div id="statusAlert" class="hidden status-bar"></div>
+
+        <!-- Session Context & Access Decision -->
+        <div class="grid lg:grid-cols-4 gap-4">
+            <!-- Session Context Card -->
+            <div class="card p-4">
+                <h3 class="font-semibold text-sm mb-4" data-i18n="dashboard.sessionContext">Session Context</h3>
+                <div class="space-y-3 text-sm text-[var(--text-secondary)]">
+                    <div>
+                        <div class="text-xs uppercase tracking-wide font-medium text-[var(--text)]" data-i18n="dashboard.device">Device</div>
+                        <div id="ctxDevice" class="font-mono text-[var(--text)]">--</div>
+                    </div>
+                    <div>
+                        <div class="text-xs uppercase tracking-wide font-medium text-[var(--text)]" data-i18n="dashboard.ip">IP</div>
+                        <div id="ctxIp" class="font-mono text-[var(--text)]">--</div>
+                    </div>
+                    <div>
+                        <div class="text-xs uppercase tracking-wide font-medium text-[var(--text)]" data-i18n="dashboard.location">Location</div>
+                        <div id="ctxLocation" class="font-mono text-[var(--text)]">--</div>
+                    </div>
+                    <div>
+                        <div class="text-xs uppercase tracking-wide font-medium text-[var(--text)]" data-i18n="dashboard.duration">Duration</div>
+                        <div id="sessionUptime" class="font-mono text-[var(--text)]">00:00</div>
+                    </div>
+                    <div>
+                        <div class="text-xs uppercase tracking-wide font-medium text-[var(--text)]" data-i18n="dashboard.monitoring">Monitoring</div>
+                        <div id="ctxMonitoring" class="inline-block mt-1 risk-pill risk-pill-low" data-i18n="dashboard.active">Active</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Access Decision Card -->
+            <div id="decisionCard" class="card p-4 lg:col-span-3">
+                <h3 class="font-semibold text-sm mb-4" data-i18n="dashboard.accessDecision">Access Decision</h3>
+                <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-4">
+                    <div>
+                        <div class="text-xs text-[var(--text-secondary)] uppercase tracking-wide font-medium mb-1" data-i18n="dashboard.risk">Risk</div>
+                        <div id="riskScore" class="text-2xl font-bold text-[var(--text)]">0.0</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-[var(--text-secondary)] uppercase tracking-wide font-medium mb-1" data-i18n="dashboard.trust">Trust</div>
+                        <div id="trustScore" class="text-2xl font-bold text-[var(--text)]">100</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-[var(--text-secondary)] uppercase tracking-wide font-medium mb-1" data-i18n="dashboard.riskLevel">Risk Level</div>
+                        <div id="riskLevelBadge" class="inline-block badge badge-low">Unknown</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-[var(--text-secondary)] uppercase tracking-wide font-medium mb-1" data-i18n="dashboard.decision">Decision</div>
+                        <div id="accessDecisionText" class="text-sm font-semibold text-[var(--text)]">Pending</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-[var(--text-secondary)] uppercase tracking-wide font-medium mb-1" data-i18n="dashboard.protection">Protection</div>
+                        <div id="dataStatusText" class="text-sm font-semibold text-[var(--text)]">Protected</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-[var(--text-secondary)] uppercase tracking-wide font-medium mb-1" data-i18n="dashboard.threat">Threat</div>
+                        <div id="threatType" class="text-sm font-semibold text-[var(--text)]">Normal</div>
+                    </div>
+                </div>
+                <div class="risk-bar">
+                    <div id="riskBar" class="risk-bar-fill" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Risk Breakdown & Timeline -->
+        <div class="grid lg:grid-cols-3 gap-4">
+            <div class="card p-4 lg:col-span-2">
+                <h3 class="font-semibold text-sm mb-4" data-i18n="dashboard.riskBreakdown">Risk Score Breakdown</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4 text-sm">
+                    <div class="card p-2">
+                        <span class="text-[var(--text-secondary)]" data-i18n="dashboard.typing">Typing</span>: 
+                        <span id="scoreTyping" class="font-bold text-[var(--text)]">+0</span>
+                    </div>
+                    <div class="card p-2">
+                        <span class="text-[var(--text-secondary)]" data-i18n="dashboard.mouse">Mouse</span>: 
+                        <span id="scoreMouse" class="font-bold text-[var(--text)]">+0</span>
+                    </div>
+                    <div class="card p-2">
+                        <span class="text-[var(--text-secondary)]" data-i18n="dashboard.ip">IP</span>: 
+                        <span id="scoreIp" class="font-bold text-[var(--text)]">+0</span>
+                    </div>
+                    <div class="card p-2">
+                        <span class="text-[var(--text-secondary)]" data-i18n="dashboard.session">Session</span>: 
+                        <span id="scoreSession" class="font-bold text-[var(--text)]">+0</span>
+                    </div>
+                </div>
+                <div id="riskFactorsList" class="space-y-2 text-sm"></div>
+            </div>
+
+            <div class="card p-4">
+                <h3 class="font-semibold text-sm mb-4" data-i18n="dashboard.behaviorTimeline">Timeline</h3>
+                <div id="timelineLog" class="space-y-2 text-xs font-mono text-[var(--text-secondary)] max-h-64 overflow-y-auto">
+                    <div data-i18n="dashboard.monitoring">Monitoring...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sensitive Data & Protected Resource -->
+        <div class="grid lg:grid-cols-2 gap-4">
+            <div class="card p-4">
+                <h3 class="font-semibold text-sm mb-4" data-i18n="dashboard.sensitiveDataVault">Sensitive Data Vault</h3>
+                <div id="restrictedOverlay" class="hidden status-bar status-bar-error mb-4" style="border-left-width: 3px;">
+                    <div class="font-semibold text-sm" data-i18n="dashboard.denied">Access denied: critical risk.</div>
+                </div>
+                <div id="sensitiveDataContainer" class="space-y-3 text-sm">
+                    <div>
+                        <div class="text-xs text-[var(--text-secondary)] uppercase tracking-wide font-medium mb-1" data-i18n="dashboard.userId">User ID</div>
+                        <div id="userIdDisplay" class="font-mono text-[var(--text)]">--</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-[var(--text-secondary)] uppercase tracking-wide font-medium mb-1" data-i18n="dashboard.accountBalance">Account Balance</div>
+                        <div id="accountBalance" class="font-mono text-[var(--text)]">$145,250.00</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-[var(--text-secondary)] uppercase tracking-wide font-medium mb-1" data-i18n="dashboard.lastLoginIp">Last Login IP</div>
+                        <div id="lastLoginIp" class="font-mono text-[var(--text)]">192.168.1.105</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-4">
+                <h3 class="font-semibold text-sm mb-4" data-i18n="dashboard.protectedResource">Protected Resource</h3>
+                <button id="resourceBtn" class="btn btn-primary w-full mb-3" data-i18n="dashboard.requestSensitiveData">Request Data</button>
+                <div id="resourceResult" class="text-sm text-[var(--text-secondary)]" data-i18n="dashboard.noRequest">No request yet.</div>
+            </div>
+        </div>
+
+        <!-- Decision Explanation -->
+        <div class="grid lg:grid-cols-3 gap-4">
+            <div class="card p-4 lg:col-span-2">
+                <h3 class="font-semibold text-sm mb-4" data-i18n="dashboard.whyDecision">Why system made this decision</h3>
+                <ul id="explainList" class="space-y-2 text-sm">
+                    <li class="text-[var(--text-secondary)]" data-i18n="dashboard.normalBehavior">Behavior is consistent with baseline profile.</li>
+                </ul>
+                <div id="explainConclusion" class="mt-4 p-3 rounded-6px bg-blue-50 text-sm text-[var(--text)]"></div>
+            </div>
+
+            <div class="card p-4">
+                <h3 class="font-semibold text-sm mb-4" data-i18n="dashboard.systemFlow">System Flow</h3>
+                <div class="text-xs text-[var(--text-secondary)] leading-relaxed">User → Sensors → Behavior → Risk Engine → Access Control → Protected Resource</div>
+            </div>
+        </div>
+
+        <!-- Demo Scenarios -->
+        <div class="card p-4">
+            <h3 class="font-semibold text-sm mb-4" data-i18n="dashboard.demoScenario">Demo Scenario Control Panel</h3>
+            <div class="flex flex-wrap gap-2">
+                <button class="scenarioBtn btn btn-secondary" data-scenario="normal" data-i18n="dashboard.normalScenario">Normal</button>
+                <button class="scenarioBtn btn btn-secondary" data-scenario="suspicious" data-i18n="dashboard.suspiciousScenario">Suspicious</button>
+                <button class="scenarioBtn btn btn-secondary" data-scenario="high-risk" data-i18n="dashboard.highRiskScenario">High-Risk</button>
+                <button id="resetBaselineBtn" class="btn btn-secondary" data-i18n="dashboard.resetBaseline">Reset Baseline</button>
+                <button id="unlockSessionBtn" class="btn btn-secondary" style="background-color: #F59E0B; color: white;">Unlock Session</button>
+                <button id="verifyBtn" class="hidden btn btn-primary" data-i18n="dashboard.verify">Verify</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Step-up Authentication Modal -->
+    <div id="otpModal" class="hidden fixed inset-0 bg-black/40 z-40 flex items-center justify-center p-4">
+        <div class="card p-6 w-full max-w-sm">
+            <h3 class="font-semibold text-lg mb-2" data-i18n="stepup.title">Step-up Authentication</h3>
+            <p class="text-sm text-[var(--text-secondary)] mb-4" data-i18n="stepup.subtitle">Enter OTP code:</p>
+            <input id="otpInput" class="w-full border border-[var(--border)] rounded-6px px-3 py-2 mb-4 text-sm" data-i18n-placeholder="stepup.otpPlaceholder" placeholder="OTP">
+            <div class="flex justify-end gap-2">
+                <button onclick="closeOtpModal()" class="btn btn-secondary" data-i18n="stepup.cancel">Cancel</button>
+                <button id="otpSubmitBtn" class="btn btn-primary" data-i18n="stepup.verify">Verify</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/sensor.js"></script>
+    <script>
+        // Initialize i18n
+        function initLanguage() {
+            const lang = getLanguage();
+            updateLanguageButton(lang);
+            updatePageText(lang);
+        }
+
+        function updatePageText(lang) {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.dataset.i18n;
+                el.textContent = t(key, lang);
+            });
+
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.dataset.i18nPlaceholder;
+                el.placeholder = t(key, lang);
+            });
+        }
+
+        function switchLanguage(lang) {
+            setLanguage(lang);
+            updateLanguageButton(lang);
+            updatePageText(lang);
+        }
+
+        function updateLanguageButton(lang) {
+            document.querySelectorAll('.language-switch button').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.lang === lang);
+                if (btn.dataset.lang === lang) {
+                    btn.style.backgroundColor = 'var(--primary)';
+                    btn.style.color = 'white';
+                } else {
+                    btn.style.backgroundColor = 'transparent';
+                    btn.style.color = 'var(--text-secondary)';
+                }
+            });
+        }
+
+        // Session Management
+        const token = localStorage.getItem('access_token');
+        const username = localStorage.getItem('username');
+        const userId = localStorage.getItem('user_id');
+        const role = localStorage.getItem('role') || 'employee';
+
+        if (!token) window.location.href = '/login';
+
+        document.getElementById('usernameDisplay').textContent = username || 'unknown';
+        document.getElementById('roleDisplay').textContent = role.charAt(0).toUpperCase() + role.slice(1);
+        document.getElementById('userIdDisplay').textContent = userId || '--';
+
+        if (role === 'admin') {
+            document.getElementById('adminAnalyticsLink').classList.remove('hidden');
+        }
+
+        // Critical Mode
+        let killSwitchTimer = null;
+        let killSwitchSeconds = 5;
+        let criticalEventLogged = false;
+        let criticalModeActive = false;
+
+        function logSecurityEvent(action, message, riskScore = 0) {
+            const payload = JSON.stringify({ action, message, risk_score: riskScore });
+            try {
+                if (navigator.sendBeacon) {
+                    const sent = navigator.sendBeacon('/api/security-event', new Blob([payload], { type: 'application/json' }));
+                    if (sent) return;
+                }
+                const headers = { 'Content-Type': 'application/json' };
+                if (token) headers.Authorization = `Bearer ${token}`;
+                fetch('/api/security-event', {
+                    method: 'POST',
+                    headers,
+                    body: payload,
+                    keepalive: true
+                });
+            } catch (error) {
+                console.warn('Failed to log security event:', error);
+            }
+        }
+
+        function api(path, method='GET', body=null) {
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers.Authorization = `Bearer ${token}`;
+            return fetch(path, {
+                method,
+                headers,
+                body: body ? JSON.stringify(body) : null
+            });
+        }
+
+        function logEvent(message) {
+            const t = new Date().toLocaleTimeString();
+            const row = document.createElement('div');
+            row.textContent = `[${t}] ${message}`;
+            const wrap = document.getElementById('timelineLog');
+            wrap.prepend(row);
+            if (wrap.children.length > 25) wrap.removeChild(wrap.lastChild);
+        }
+
+        function logout() {
+            clearInterval(killSwitchTimer);
+            criticalEventLogged = false;
+            criticalModeActive = false;
+            document.getElementById('criticalBanner').classList.add('hidden');
+            document.cookie = 'access_token=; Max-Age=0; path=/; SameSite=Lax';
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('user_id');
+            localStorage.removeItem('username');
+            localStorage.removeItem('role');
+            localStorage.removeItem('loginTime');
+            window.location.href = '/login';
+        }
+
+        function startKillSwitch(risk) {
+            if (criticalModeActive && killSwitchTimer) return;
+            clearInterval(killSwitchTimer);
+            criticalModeActive = true;
+            killSwitchSeconds = 5;
+            const banner = document.getElementById('criticalBanner');
+            banner.classList.remove('hidden');
+            document.getElementById('criticalCountdown').textContent = killSwitchSeconds;
+            
+            if (!criticalEventLogged) {
+                criticalEventLogged = true;
+                logSecurityEvent('critical_session_triggered', 'Possible session hijacking detected. Countdown started.', risk);
+            }
+
+            killSwitchTimer = setInterval(() => {
+                killSwitchSeconds -= 1;
+                document.getElementById('criticalCountdown').textContent = killSwitchSeconds;
+                if (killSwitchSeconds <= 0) {
+                    clearInterval(killSwitchTimer);
+                    logSecurityEvent('critical_session_terminated', 'Critical risk exceeded. Session terminated automatically.', risk).finally(() => {
+                        logout();
+                    });
+                }
+            }, 1000);
+        }
+
+        function closeOtpModal() {
+            document.getElementById('otpModal').classList.add('hidden');
+        }
+        window.closeOtpModal = closeOtpModal;
+
+        // Decision Logic
+        async function applyDecision(raw) {
+            const risk = Number(raw.risk_score || 0);
+            const trust = Number(raw.trust_score ?? Math.max(0, 100 - risk));
+            const reasons = raw.reasons || ['No anomalies detected'];
+            const breakdown = raw.score_breakdown || {};
+
+            // Determine risk level
+            let riskLevel = t('risk.low', getLanguage());
+            let riskBadgeClass = 'badge-low';
+            if (risk >= 80) {
+                riskLevel = t('risk.critical', getLanguage());
+                riskBadgeClass = 'badge-critical';
+            } else if (risk >= 60) {
+                riskLevel = t('risk.high', getLanguage());
+                riskBadgeClass = 'badge-high';
+            } else if (risk >= 40) {
+                riskLevel = t('risk.medium', getLanguage());
+                riskBadgeClass = 'badge-medium';
+            }
+
+            // Update display
+            document.getElementById('riskScore').textContent = risk.toFixed(1);
+            document.getElementById('trustScore').textContent = `${trust.toFixed(1)} ${risk > 50 ? '↓' : '↑'}`;
+            document.getElementById('riskLevelBadge').className = `inline-block badge ${riskBadgeClass}`;
+            document.getElementById('riskLevelBadge').textContent = riskLevel;
+            document.getElementById('accessDecisionText').textContent = raw.access_decision || raw.message || t('general.loading', getLanguage());
+            document.getElementById('dataStatusText').textContent = raw.data_protection || t('dashboard.protected', getLanguage());
+            document.getElementById('threatType').textContent = raw.threat_type || t('threat.normal', getLanguage());
+            document.getElementById('riskBar').style.width = `${Math.min(100, risk)}%`;
+
+            // Status alert
+            const statusAlert = document.getElementById('statusAlert');
+            if (risk >= 80 || raw.kill_switch) {
+                statusAlert.className = 'status-bar status-bar-error';
+                statusAlert.textContent = raw.final_access_decision || t('access.sessionLocked', getLanguage());
+                statusAlert.classList.remove('hidden');
+                if (!criticalModeActive) {
+                    startKillSwitch(risk);
+                }
+            } else if (risk > 50) {
+                statusAlert.className = 'status-bar status-bar-warning';
+                statusAlert.textContent = raw.requires_mfa ? t('access.stepUpRequired', getLanguage()) : t('dashboard.suspiciousActivity', getLanguage());
+                statusAlert.classList.remove('hidden');
+            } else {
+                statusAlert.classList.add('hidden');
+                clearInterval(killSwitchTimer);
+                criticalEventLogged = false;
+                criticalModeActive = false;
+                document.getElementById('criticalBanner').classList.add('hidden');
+            }
+
+            // Score breakdown
+            document.getElementById('scoreTyping').textContent = `+${breakdown["Typing Anomaly"] || 0}`;
+            document.getElementById('scoreMouse').textContent = `+${breakdown["Mouse Anomaly"] || 0}`;
+            document.getElementById('scoreIp').textContent = `+${breakdown["IP Change"] || 0}`;
+            document.getElementById('scoreSession').textContent = `+${breakdown["Session Anomaly"] || 0}`;
+
+            // Risk factors
+            const factors = document.getElementById('riskFactorsList');
+            factors.innerHTML = '';
+            reasons.forEach((r) => {
+                const div = document.createElement('div');
+                div.className = 'p-2 rounded-6px bg-[var(--border)] text-sm text-[var(--text-secondary)]';
+                div.textContent = r;
+                factors.appendChild(div);
+            });
+
+            // Explanation
+            const explain = raw.explainability || { highlights: reasons, conclusion: '' };
+            const explainList = document.getElementById('explainList');
+            explainList.innerHTML = '';
+            (explain.highlights || []).forEach((h) => {
+                const li = document.createElement('li');
+                li.className = 'text-[var(--text)]';
+                li.textContent = h;
+                explainList.appendChild(li);
+            });
+            document.getElementById('explainConclusion').textContent = explain.conclusion || '';
+
+            // Data protection
+            const verifyBtn = document.getElementById('verifyBtn');
+            const overlay = document.getElementById('restrictedOverlay');
+            const sensitive = document.getElementById('sensitiveDataContainer');
+
+            if (raw.requires_mfa) {
+                verifyBtn.classList.remove('hidden');
+                sensitive.classList.add('blur-sm');
+                document.getElementById('accountBalance').textContent = '$***,***.**';
+                document.getElementById('lastLoginIp').textContent = '***.***.*.*';
+                logEvent(t('dashboard.verify', getLanguage()));
+            } else {
+                verifyBtn.classList.add('hidden');
+            }
+
+            if (raw.kill_switch || risk > 70) {
+                overlay.classList.remove('hidden');
+                sensitive.classList.add('blur-md');
+                logEvent(t('dashboard.criticalRisk', getLanguage()));
+            } else {
+                overlay.classList.add('hidden');
+                sensitive.classList.remove('blur-md');
+                if (!raw.requires_mfa) {
+                    sensitive.classList.remove('blur-sm');
+                    document.getElementById('accountBalance').textContent = role === 'employee' ? '$***,***.**' : '$145,250.00';
+                    document.getElementById('lastLoginIp').textContent = role === 'employee' ? '***.***.*.*' : '192.168.1.105';
+                }
+            }
+
+            logEvent(`${t('dashboard.decision', getLanguage())}: ${raw.access_decision || raw.message}`);
+        }
+
+        // Event Listeners
+        document.getElementById('verifyBtn').addEventListener('click', () => {
+            document.getElementById('otpModal').classList.remove('hidden');
+        });
+
+        document.getElementById('otpSubmitBtn').addEventListener('click', async () => {
+            const otp = document.getElementById('otpInput').value.trim();
+            const res = await api('/api/step-up-verify', 'POST', { otp });
+            if (res.ok) {
+                closeOtpModal();
+                logEvent(t('event.mfaSuccess', getLanguage()));
+                const statusAlert = document.getElementById('statusAlert');
+                statusAlert.className = 'status-bar status-bar-success';
+                statusAlert.textContent = t('event.mfaSuccess', getLanguage());
+                statusAlert.classList.remove('hidden');
+            } else {
+                alert(t('event.mfaFailed', getLanguage()));
+            }
+        });
+
+        document.querySelectorAll('.scenarioBtn').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+                const scenario = btn.dataset.scenario;
+                const res = await api('/api/demo-scenario', 'POST', { scenario });
+                const data = await res.json();
+                await applyDecision(data);
+                logEvent(`Scenario: ${scenario}`);
+            });
+        });
+
+        document.getElementById('resetBaselineBtn').addEventListener('click', async () => {
+            const res = await api('/api/reset-baseline', 'POST');
+            const data = await res.json();
+            logEvent(data.message || 'Baseline reset');
+        });
+
+        document.getElementById('unlockSessionBtn').addEventListener('click', async () => {
+            const res = await api('/api/unlock-session', 'POST', {});
+            const data = await res.json();
+            logEvent(data.message || 'Session unlocked');
+            alert('Session unlocked! You can now analyze behavior again.');
+        });
+
+        document.getElementById('resourceBtn').addEventListener('click', async () => {
+            const res = await api('/api/protected-resource');
+            const out = document.getElementById('resourceResult');
+            let payload = {};
+            try {
+                payload = await res.json();
+            } catch (error) {
+                payload = {};
+            }
+            if (res.status === 200) {
+                out.textContent = `200 OK: ${payload.final_access_decision || payload.decision || 'resource granted'}`;
+                logEvent(t('access.fullAccess', getLanguage()));
+            } else if (res.status === 403) {
+                out.textContent = payload.detail || '403 Forbidden';
+                logEvent(t('access.denied', getLanguage()));
+            } else if (res.status === 423) {
+                out.textContent = payload.detail || '423 Locked';
+                logEvent(t('access.blocked', getLanguage()));
+            } else {
+                out.textContent = payload.detail || 'Request failed.';
+            }
+        });
+
+        window.addEventListener('behaviorAnalyzed', (event) => {
+            applyDecision(event.detail.rawData || event.detail);
+        });
+
+        async function loadSessionContext() {
+            const loginTime = localStorage.getItem('loginTime') || Date.now().toString();
+            const res = await fetch('/api/session-context', { headers: { 'Authorization': `Bearer ${token}`, 'x-login-time': loginTime } });
+            if (res.status === 401 || res.status === 423) {
+                logout();
+                return;
+            }
+            if (!res.ok) return;
+            const c = await res.json();
+            document.getElementById('ctxDevice').textContent = c.device;
+            document.getElementById('ctxIp').textContent = c.ip;
+            document.getElementById('ctxLocation').textContent = c.location;
+            document.getElementById('ctxMonitoring').textContent = t('status.active', getLanguage());
+        }
+
+        setInterval(() => {
+            const loginTime = Number(localStorage.getItem('loginTime') || Date.now());
+            const diff = Math.floor((Date.now() - loginTime) / 1000);
+            const m = String(Math.floor(diff / 60)).padStart(2, '0');
+            const s = String(diff % 60).padStart(2, '0');
+            document.getElementById('sessionUptime').textContent = `${m}:${s}`;
+        }, 1000);
+
+        // Listen for language change
+        window.addEventListener('languageChanged', (e) => {
+            updatePageText(e.detail.language);
+        });
+
+        // Initialize
+        initLanguage();
+        logEvent(t('event.login', getLanguage()));
+        loadSessionContext();
+    </script>
+</body>
+</html>

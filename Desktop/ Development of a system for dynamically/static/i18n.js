@@ -1,0 +1,691 @@
+/**
+ * Internationalization (i18n) system for the Dynamic Access Control System
+ * Supports: English (en), Russian (ru), Kazakh (kk)
+ */
+
+const translations = {
+  en: {
+    // Navigation and Header
+    'nav.dashboard': 'Dashboard',
+    'nav.adminAnalytics': 'Admin Analytics',
+    'nav.user': 'User',
+    'nav.role': 'Role',
+    'nav.logout': 'Logout',
+    'nav.language': 'Language',
+
+    // Login Page
+    'login.title': 'Welcome Back',
+    'login.subtitle': 'Sign in to continue monitoring behavioral risk and access decisions.',
+    'login.username': 'Username',
+    'login.password': 'Password',
+    'login.login': 'Login',
+    'login.signin': 'Signing in...',
+    'login.locked': 'Locked',
+    'login.demoAccounts': 'Demo Accounts',
+    'login.error': 'Invalid username or password',
+    'login.accountLocked': 'Account temporarily locked due to suspicious activity',
+    'login.retryIn': 'Retry in',
+    'login.seconds': 'seconds',
+    'login.multipleAttempts': 'Multiple failed login attempts detected',
+    'login.platformTitle': 'Dynamic Access Control System',
+    'login.platformSubtitle': 'Monitor behavior in real time and adjust access automatically without slowing down trusted users.',
+    'login.feature1': 'Live risk scoring from keystroke and mouse signals',
+    'login.feature2': 'Step-up authentication when confidence drops',
+    'login.feature3': 'Role-aware access decisions and resource masking',
+
+    // Dashboard
+    'dashboard.title': 'Adaptive Access Dashboard',
+    'dashboard.sessionContext': 'Session Context',
+    'dashboard.device': 'Device',
+    'dashboard.ip': 'IP',
+    'dashboard.location': 'Location',
+    'dashboard.duration': 'Duration',
+    'dashboard.monitoring': 'Monitoring',
+    'dashboard.active': 'Active',
+    'dashboard.accessDecision': 'Access Decision',
+    'dashboard.risk': 'Risk',
+    'dashboard.trust': 'Trust',
+    'dashboard.riskLevel': 'Risk Level',
+    'dashboard.decision': 'Decision',
+    'dashboard.protection': 'Protection',
+    'dashboard.threat': 'Threat',
+    'dashboard.riskBreakdown': 'Risk Score Breakdown',
+    'dashboard.typing': 'Typing',
+    'dashboard.mouse': 'Mouse',
+    'dashboard.session': 'Session',
+    'dashboard.behaviorTimeline': 'Behavior Timeline',
+    'dashboard.sensitiveDataVault': 'Sensitive Data Vault',
+    'dashboard.userId': 'User ID',
+    'dashboard.accountBalance': 'Account Balance',
+    'dashboard.lastLoginIp': 'Last Login IP',
+    'dashboard.protectedResource': 'Protected Resource Access',
+    'dashboard.requestSensitiveData': 'Request Sensitive Data',
+    'dashboard.demoScenario': 'Demo Scenario Control Panel',
+    'dashboard.normalScenario': 'Run Normal Scenario',
+    'dashboard.suspiciousScenario': 'Run Suspicious Scenario',
+    'dashboard.highRiskScenario': 'Run High-Risk Scenario',
+    'dashboard.resetBaseline': 'Reset Baseline',
+    'dashboard.verify': 'Verify Identity',
+    'dashboard.exitCritical': 'Exit Critical Mode',
+    'dashboard.whyDecision': 'Why system made this decision',
+    'dashboard.systemFlow': 'System Flow',
+    'dashboard.protected': 'Protected',
+    'dashboard.masked': 'Masked',
+    'dashboard.partiallyVisible': 'Partially visible',
+    'dashboard.limitedAccess': 'Limited access',
+    'dashboard.readOnly': 'Read-only',
+    'dashboard.noRequest': 'No request yet.',
+    'dashboard.denied': 'Access denied: critical risk.',
+    'dashboard.normalBehavior': 'Behavior is consistent with baseline profile.',
+    'dashboard.possibleBot': 'Possible bot or compromised session',
+    'dashboard.monitoringActive': 'Monitoring Active',
+    'dashboard.suspiciousActivity': 'Suspicious Activity',
+    'dashboard.criticalRisk': 'Critical Risk',
+
+    // Risk Levels
+    'risk.low': 'Low',
+    'risk.medium': 'Medium',
+    'risk.high': 'High',
+    'risk.critical': 'Critical',
+
+    // Access Decisions
+    'access.fullAccess': 'Full access',
+    'access.limitedAccess': 'Limited access',
+    'access.maskedAccess': 'Masked access',
+    'access.denied': 'Access denied',
+    'access.stepUpRequired': 'Step-up authentication required',
+    'access.blocked': 'Blocked',
+    'access.sessionLocked': 'Session locked due to critical risk',
+
+    // Threat Types
+    'threat.normal': 'Normal user',
+    'threat.suspicious': 'Suspicious behavior',
+    'threat.bot': 'Possible bot',
+    'threat.hijacking': 'Possible session hijacking',
+
+    // Critical Mode
+    'critical.event': 'Critical Security Event',
+    'critical.title': 'Possible session hijacking detected',
+    'critical.terminate': 'Session will terminate in',
+    'critical.isolation': 'High risk posture requires immediate isolation.',
+
+    // Step-up Authentication
+    'stepup.title': 'Step-up Authentication',
+    'stepup.subtitle': 'Enter OTP code:',
+    'stepup.otpPlaceholder': 'OTP',
+    'stepup.verify': 'Verify',
+    'stepup.cancel': 'Cancel',
+
+    // Admin Analytics
+    'admin.title': 'Security Analytics Console',
+    'admin.subtitle': 'Monitor users, sessions, risks, and security events in a single control plane with role-aware actions and live threat posture indicators.',
+    'admin.currentPosture': 'Current Posture',
+    'admin.threatsToday': 'Threats Today',
+    'admin.healthScore': 'Security Health Score',
+    'admin.derived': 'Derived from trust, blocked sessions, and risk activity.',
+    'admin.systemStable': 'System Stable',
+    'admin.activeThreats': 'Active Threats',
+    'admin.usersTable': 'Users Risk Table',
+    'admin.compactView': 'Compact SOC-style view. Click a row to inspect baseline drift and timeline.',
+    'admin.adminActions': 'Admin-only management actions',
+    'admin.username': 'Username',
+    'admin.role': 'Role',
+    'admin.currentRisk': 'Current Risk',
+    'admin.trustScore': 'Trust',
+    'admin.riskLevel': 'Risk Level',
+    'admin.accessDecision': 'Access Decision',
+    'admin.sessionStatus': 'Session Status',
+    'admin.lastActivity': 'Last Activity',
+    'admin.actions': 'Actions',
+    'admin.userDetail': 'User Detail Panel',
+    'admin.selectUser': 'Select a user to inspect baseline deviations and timeline.',
+    'admin.selectedUser': 'Selected User',
+    'admin.baselineTyping': 'Baseline typing',
+    'admin.currentTyping': 'Current typing',
+    'admin.typingDeviation': 'Typing deviation',
+    'admin.threatType': 'Threat type',
+    'admin.baselineMouse': 'Baseline mouse',
+    'admin.currentMouse': 'Current mouse',
+    'admin.mouseDeviation': 'Mouse deviation',
+    'admin.recentTimeline': 'Recent Timeline',
+    'admin.riskTrend': 'Risk Trend Chart',
+    'admin.smoothedMovement': 'Smoothed movement with low, warning, and critical zones.',
+    'admin.securityEvents': 'Security Events Table',
+    'admin.recentEvents': 'Recent events.',
+    'admin.timestamp': 'Timestamp',
+    'admin.event': 'Event',
+    'admin.risk': 'Risk',
+    'admin.systemAction': 'System Action',
+    'admin.summary': 'Overview',
+    'admin.totalUsers': 'Total users',
+    'admin.activeSessions': 'Active sessions',
+    'admin.suspiciousSessions': 'Suspicious sessions',
+    'admin.blockedSessions': 'Blocked sessions',
+    'admin.avgTrust': 'Average trust score',
+    'admin.highRiskEvents': 'High-risk events today',
+    'admin.failedLogins': 'Failed logins today',
+    'admin.lockedAccounts': 'Locked accounts',
+    'admin.suspiciousAuth': 'Suspicious auth events',
+    'admin.lockSession': 'Lock Session',
+    'admin.confirmLock': 'Confirm session lock',
+    'admin.lockWarning': 'This will terminate the selected user\'s session and register a security event.',
+    'admin.locked': 'Session locked successfully',
+    'admin.accessRevoked': 'User access revoked',
+    'admin.highRiskReason': 'High behavioral risk detected',
+    'admin.monitoring': 'Monitoring Active',
+    'admin.highConfidence': 'High confidence posture and low exposure.',
+    'admin.underWatch': 'Under Watch',
+    'admin.elevatedExposure': 'Elevated exposure, keep an eye on anomalies.',
+    'admin.criticalCondition': 'Critical Condition',
+    'admin.immediateLow': 'Immediate attention required.',
+
+    // Session Status
+    'status.active': 'Active',
+    'status.suspicious': 'Suspicious',
+    'status.stepUpRequired': 'Step-up required',
+    'status.readOnly': 'Read-only',
+    'status.blocked': 'Blocked',
+
+    // Roles
+    'role.admin': 'Admin',
+    'role.employee': 'Employee',
+    'role.auditor': 'Auditor',
+
+    // Events
+    'event.login': 'Login successful',
+    'event.loginFailed': 'Failed login attempt',
+    'event.suspicious': 'Suspicious login pattern',
+    'event.cooldown': 'Login throttled',
+    'event.locked': 'Account locked due to suspicious activity',
+    'event.unlocked': 'Account unlocked',
+    'event.deviceChange': 'New device detected',
+    'event.mfaFailed': 'Step-up authentication failed',
+    'event.mfaSuccess': 'Step-up authentication verified',
+    'event.sessionTerminated': 'Session locked by kill switch',
+    'event.adminLocked': 'Session locked by admin',
+    'event.adminStepUp': 'Step-up authentication requested',
+    'event.adminReset': 'Baseline reset by admin',
+
+    // General
+    'general.loading': 'Loading...',
+    'general.error': 'Error',
+    'general.success': 'Success',
+    'general.confirm': 'Confirm',
+    'general.cancel': 'Cancel',
+  },
+
+  ru: {
+    // Navigation and Header
+    'nav.dashboard': 'Панель управления',
+    'nav.adminAnalytics': 'Аналитика администратора',
+    'nav.user': 'Пользователь',
+    'nav.role': 'Роль',
+    'nav.logout': 'Выйти',
+    'nav.language': 'Язык',
+
+    // Login Page
+    'login.title': 'Добро пожаловать',
+    'login.subtitle': 'Войдите, чтобы продолжить мониторинг поведенческого риска и принятие решений о доступе.',
+    'login.username': 'Имя пользователя',
+    'login.password': 'Пароль',
+    'login.login': 'Войти',
+    'login.signin': 'Вход...',
+    'login.locked': 'Заблокировано',
+    'login.demoAccounts': 'Демо-аккаунты',
+    'login.error': 'Неверное имя пользователя или пароль',
+    'login.accountLocked': 'Аккаунт временно заблокирован из-за подозрительной активности',
+    'login.retryIn': 'Повторить через',
+    'login.seconds': 'секунд',
+    'login.multipleAttempts': 'Обнаружены множественные неудачные попытки входа',
+    'login.platformTitle': 'Система динамического контроля доступа',
+    'login.platformSubtitle': 'Мониторьте поведение в реальном времени и автоматически корректируйте доступ без замедления для надежных пользователей.',
+    'login.feature1': 'Оценка риска в реальном времени по сигналам нажатия клавиш и движения мыши',
+    'login.feature2': 'Дополнительная аутентификация при снижении уверенности',
+    'login.feature3': 'Решения о доступе с учетом ролей и маскирование ресурсов',
+
+    // Dashboard
+    'dashboard.title': 'Адаптивная панель доступа',
+    'dashboard.sessionContext': 'Контекст сеанса',
+    'dashboard.device': 'Устройство',
+    'dashboard.ip': 'IP',
+    'dashboard.location': 'Местоположение',
+    'dashboard.duration': 'Длительность',
+    'dashboard.monitoring': 'Мониторинг',
+    'dashboard.active': 'Активно',
+    'dashboard.accessDecision': 'Решение о доступе',
+    'dashboard.risk': 'Риск',
+    'dashboard.trust': 'Доверие',
+    'dashboard.riskLevel': 'Уровень риска',
+    'dashboard.decision': 'Решение',
+    'dashboard.protection': 'Защита',
+    'dashboard.threat': 'Угроза',
+    'dashboard.riskBreakdown': 'Разбор показателя риска',
+    'dashboard.typing': 'Набор текста',
+    'dashboard.mouse': 'Мышь',
+    'dashboard.session': 'Сеанс',
+    'dashboard.behaviorTimeline': 'Временная шкала поведения',
+    'dashboard.sensitiveDataVault': 'Хранилище конфиденциальных данных',
+    'dashboard.userId': 'ID пользователя',
+    'dashboard.accountBalance': 'Баланс счета',
+    'dashboard.lastLoginIp': 'IP последнего входа',
+    'dashboard.protectedResource': 'Доступ к защищенному ресурсу',
+    'dashboard.requestSensitiveData': 'Запросить конфиденциальные данные',
+    'dashboard.demoScenario': 'Панель управления демо-сценарием',
+    'dashboard.normalScenario': 'Запустить обычный сценарий',
+    'dashboard.suspiciousScenario': 'Запустить подозрительный сценарий',
+    'dashboard.highRiskScenario': 'Запустить высокорисковый сценарий',
+    'dashboard.resetBaseline': 'Сбросить базовый уровень',
+    'dashboard.verify': 'Проверить личность',
+    'dashboard.exitCritical': 'Выход из критического режима',
+    'dashboard.whyDecision': 'Почему система приняла это решение',
+    'dashboard.systemFlow': 'Поток системы',
+    'dashboard.protected': 'Защищено',
+    'dashboard.masked': 'Замаскировано',
+    'dashboard.partiallyVisible': 'Частично видно',
+    'dashboard.limitedAccess': 'Ограниченный доступ',
+    'dashboard.readOnly': 'Только для чтения',
+    'dashboard.noRequest': 'Нет запроса.',
+    'dashboard.denied': 'Доступ запрещен: критический риск.',
+    'dashboard.normalBehavior': 'Поведение соответствует базовому профилю.',
+    'dashboard.possibleBot': 'Возможный бот или скомпрометированный сеанс',
+    'dashboard.monitoringActive': 'Мониторинг активен',
+    'dashboard.suspiciousActivity': 'Подозрительная активность',
+    'dashboard.criticalRisk': 'Критический риск',
+
+    // Risk Levels
+    'risk.low': 'Низкий',
+    'risk.medium': 'Средний',
+    'risk.high': 'Высокий',
+    'risk.critical': 'Критический',
+
+    // Access Decisions
+    'access.fullAccess': 'Полный доступ',
+    'access.limitedAccess': 'Ограниченный доступ',
+    'access.maskedAccess': 'Замаскированный доступ',
+    'access.denied': 'Доступ запрещен',
+    'access.stepUpRequired': 'Требуется дополнительная аутентификация',
+    'access.blocked': 'Заблокировано',
+    'access.sessionLocked': 'Сеанс заблокирован из-за критического риска',
+
+    // Threat Types
+    'threat.normal': 'Обычный пользователь',
+    'threat.suspicious': 'Подозрительное поведение',
+    'threat.bot': 'Возможный бот',
+    'threat.hijacking': 'Возможный перехват сеанса',
+
+    // Critical Mode
+    'critical.event': 'Критическое событие безопасности',
+    'critical.title': 'Обнаружен возможный перехват сеанса',
+    'critical.terminate': 'Сеанс будет прерван через',
+    'critical.isolation': 'Высокий риск требует немедленной изоляции.',
+
+    // Step-up Authentication
+    'stepup.title': 'Дополнительная аутентификация',
+    'stepup.subtitle': 'Введите код OTP:',
+    'stepup.otpPlaceholder': 'OTP',
+    'stepup.verify': 'Проверить',
+    'stepup.cancel': 'Отмена',
+
+    // Admin Analytics
+    'admin.title': 'Консоль аналитики безопасности',
+    'admin.subtitle': 'Мониторьте пользователей, сеансы, риски и события безопасности в единой плоскости управления с действиями с учетом ролей и живыми индикаторами позиции угрозы.',
+    'admin.currentPosture': 'Текущая позиция',
+    'admin.threatsToday': 'Угрозы сегодня',
+    'admin.healthScore': 'Оценка безопасности',
+    'admin.derived': 'Рассчитано на основе доверия, заблокированных сеансов и деятельности риска.',
+    'admin.systemStable': 'Система стабильна',
+    'admin.activeThreats': 'Активные угрозы',
+    'admin.usersTable': 'Таблица рисков пользователей',
+    'admin.compactView': 'Компактный вид в стиле SOC. Нажмите на строку для проверки дрейфа базовых показателей и временной шкалы.',
+    'admin.adminActions': 'Действия управления только администратора',
+    'admin.username': 'Имя пользователя',
+    'admin.role': 'Роль',
+    'admin.currentRisk': 'Текущий риск',
+    'admin.trustScore': 'Доверие',
+    'admin.riskLevel': 'Уровень риска',
+    'admin.accessDecision': 'Решение о доступе',
+    'admin.sessionStatus': 'Статус сеанса',
+    'admin.lastActivity': 'Последняя активность',
+    'admin.actions': 'Действия',
+    'admin.userDetail': 'Панель деталей пользователя',
+    'admin.selectUser': 'Выберите пользователя для проверки отклонений от базовых показателей и временной шкалы.',
+    'admin.selectedUser': 'Выбранный пользователь',
+    'admin.baselineTyping': 'Базовый набор текста',
+    'admin.currentTyping': 'Текущий набор текста',
+    'admin.typingDeviation': 'Отклонение набора текста',
+    'admin.threatType': 'Тип угрозы',
+    'admin.baselineMouse': 'Базовая мышь',
+    'admin.currentMouse': 'Текущая мышь',
+    'admin.mouseDeviation': 'Отклонение мыши',
+    'admin.recentTimeline': 'Недавняя временная шкала',
+    'admin.riskTrend': 'График тенденции риска',
+    'admin.smoothedMovement': 'Плавное движение с низкой, предупреждающей и критической зонами.',
+    'admin.securityEvents': 'Таблица событий безопасности',
+    'admin.recentEvents': 'Недавние события.',
+    'admin.timestamp': 'Временная метка',
+    'admin.event': 'Событие',
+    'admin.risk': 'Риск',
+    'admin.systemAction': 'Действие системы',
+    'admin.summary': 'Обзор',
+    'admin.totalUsers': 'Всего пользователей',
+    'admin.activeSessions': 'Активные сеансы',
+    'admin.suspiciousSessions': 'Подозрительные сеансы',
+    'admin.blockedSessions': 'Заблокированные сеансы',
+    'admin.avgTrust': 'Средняя оценка доверия',
+    'admin.highRiskEvents': 'События высокого риска сегодня',
+    'admin.failedLogins': 'Неудачные входы сегодня',
+    'admin.lockedAccounts': 'Заблокированные аккаунты',
+    'admin.suspiciousAuth': 'События подозрительной аутентификации',
+    'admin.lockSession': 'Заблокировать сеанс',
+    'admin.confirmLock': 'Подтвердить блокировку сеанса',
+    'admin.lockWarning': 'Это прекратит сеанс выбранного пользователя и зарегистрирует событие безопасности.',
+    'admin.locked': 'Сеанс успешно заблокирован',
+    'admin.accessRevoked': 'Доступ пользователя отозван',
+    'admin.highRiskReason': 'Обнаружен высокий поведенческий риск',
+    'admin.monitoring': 'Мониторинг активен',
+    'admin.highConfidence': 'Высокая уверенная позиция и низкая уязвимость.',
+    'admin.underWatch': 'Под наблюдением',
+    'admin.elevatedExposure': 'Повышенная уязвимость, следите за аномалиями.',
+    'admin.criticalCondition': 'Критическое состояние',
+    'admin.immediateLow': 'Требуется немедленное внимание.',
+
+    // Session Status
+    'status.active': 'Активно',
+    'status.suspicious': 'Подозрительно',
+    'status.stepUpRequired': 'Требуется дополнительная аутентификация',
+    'status.readOnly': 'Только для чтения',
+    'status.blocked': 'Заблокировано',
+
+    // Roles
+    'role.admin': 'Администратор',
+    'role.employee': 'Сотрудник',
+    'role.auditor': 'Аудитор',
+
+    // Events
+    'event.login': 'Успешный вход',
+    'event.loginFailed': 'Неудачная попытка входа',
+    'event.suspicious': 'Подозрительный паттерн входа',
+    'event.cooldown': 'Вход отрегулирован',
+    'event.locked': 'Аккаунт заблокирован из-за подозрительной активности',
+    'event.unlocked': 'Аккаунт разблокирован',
+    'event.deviceChange': 'Обнаружено новое устройство',
+    'event.mfaFailed': 'Дополнительная аутентификация не выполнена',
+    'event.mfaSuccess': 'Дополнительная аутентификация проверена',
+    'event.sessionTerminated': 'Сеанс заблокирован переключателем убийства',
+    'event.adminLocked': 'Сеанс заблокирован администратором',
+    'event.adminStepUp': 'Требуется дополнительная аутентификация',
+    'event.adminReset': 'Базовое значение сброшено администратором',
+
+    // General
+    'general.loading': 'Загрузка...',
+    'general.error': 'Ошибка',
+    'general.success': 'Успех',
+    'general.confirm': 'Подтвердить',
+    'general.cancel': 'Отмена',
+  },
+
+  kk: {
+    // Navigation and Header
+    'nav.dashboard': 'Басқару тақтасы',
+    'nav.adminAnalytics': 'Администратор аналитикасы',
+    'nav.user': 'Пользователь',
+    'nav.role': 'Рөлі',
+    'nav.logout': 'Шығу',
+    'nav.language': 'Тіл',
+
+    // Login Page
+    'login.title': 'Қош келдіңіз',
+    'login.subtitle': 'Сәйкес келмеген тәуекелдің мониторингін және қолжетімділік шешімдерін қабылдап, кіріңіз.',
+    'login.username': 'Пайдаланушы аты',
+    'login.password': 'Құпия сөз',
+    'login.login': 'Кіру',
+    'login.signin': 'Кіру...',
+    'login.locked': 'Құшталды',
+    'login.demoAccounts': 'Демо есептіктері',
+    'login.error': 'Неғұрлым пайдаланушы аты немесе құпия сөз',
+    'login.accountLocked': 'Есептік шамалы ашудың сондай істелгісінен улана құшталды',
+    'login.retryIn': 'Қайта күніндеу',
+    'login.seconds': 'секундтар',
+    'login.multipleAttempts': 'Төрт іс дәрістерін сынау болды',
+    'login.platformTitle': 'Динамикалық рұқсат басқару жүйесі',
+    'login.platformSubtitle': 'Мінез-құлықты нақты уақытта қараңыз және сенімді пайдаланушылар үшін ынамдарының дәрісін азайтпай, жүйемісін автоматты түрде өндіріңіз.',
+    'login.feature1': 'Пернетақта басуы және тышқан қозғалысы сигналдарынан нақты уақыт ішінде тәуекел есептеуі',
+    'login.feature2': 'Сенім төмендегенде қосымша аутентификация',
+    'login.feature3': 'Рөлге ішінбедгі қолжетімділік шешімдері және ресурстарды маскирование',
+
+    // Dashboard
+    'dashboard.title': 'Бейімдеуге қайта түскен қолжетімділік тақтасы',
+    'dashboard.sessionContext': 'Сеанс контексті',
+    'dashboard.device': 'Құрылғы',
+    'dashboard.ip': 'IP',
+    'dashboard.location': 'Орналасуы',
+    'dashboard.duration': 'Ұзақтығы',
+    'dashboard.monitoring': 'Мониторинг',
+    'dashboard.active': 'Белсенді',
+    'dashboard.accessDecision': 'Қолжетімділік шешімі',
+    'dashboard.risk': 'Тәуекел',
+    'dashboard.trust': 'Сенім',
+    'dashboard.riskLevel': 'Тәуекел деңгейі',
+    'dashboard.decision': 'Шешім',
+    'dashboard.protection': 'Қорғау',
+    'dashboard.threat': 'Қауіп',
+    'dashboard.riskBreakdown': 'Тәуекел ұпайын бөлген',
+    'dashboard.typing': 'Пернетақта басу',
+    'dashboard.mouse': 'Тышқан',
+    'dashboard.session': 'Сеанс',
+    'dashboard.behaviorTimeline': 'Мінез-құлық істі',
+    'dashboard.sensitiveDataVault': 'Сезімтал деректер сақталатындығы',
+    'dashboard.userId': 'Пайдаланушы ID',
+    'dashboard.accountBalance': 'Есептік балансы',
+    'dashboard.lastLoginIp': 'Соңғы кіру IP',
+    'dashboard.protectedResource': 'Қорғалған ресурсқа қолжетімді',
+    'dashboard.requestSensitiveData': 'Сезімтал деректерді сұрау',
+    'dashboard.demoScenario': 'Демо сценарий басқару тақтасы',
+    'dashboard.normalScenario': 'Қалыпты сценарийді орындау',
+    'dashboard.suspiciousScenario': 'Сәйкес келмеген сценарийді орындау',
+    'dashboard.highRiskScenario': 'Жоғары тәуекелді сценарийді орындау',
+    'dashboard.resetBaseline': 'Негіз сипаттамасын қайта тұрғындау',
+    'dashboard.verify': 'Жеке басты растау',
+    'dashboard.exitCritical': 'Критикалық режімнен шығу',
+    'dashboard.whyDecision': 'Неге жүйе осы шешімді қабылдады',
+    'dashboard.systemFlow': 'Жүйе ағыны',
+    'dashboard.protected': 'Қорғалды',
+    'dashboard.masked': 'Маскирленген',
+    'dashboard.partiallyVisible': 'Ішінбедгі көрінді',
+    'dashboard.limitedAccess': 'Шектеулі қолжетімділік',
+    'dashboard.readOnly': 'Тек оқу',
+    'dashboard.noRequest': 'Сұрау жоқ.',
+    'dashboard.denied': 'Қолжетімділік тыйымдалды: критикалық тәуекел.',
+    'dashboard.normalBehavior': 'Мінез-құлық негіз профильіндегі ұқсас.',
+    'dashboard.possibleBot': 'Мүмкін бот немесе ысырған сеанс',
+    'dashboard.monitoringActive': 'Мониторинг белсенді',
+    'dashboard.suspiciousActivity': 'Шамалы сәйкес келмеген іс-әрекет',
+    'dashboard.criticalRisk': 'Критикалық тәуекел',
+
+    // Risk Levels
+    'risk.low': 'Төмен',
+    'risk.medium': 'Орташа',
+    'risk.high': 'Жоғары',
+    'risk.critical': 'Критикалық',
+
+    // Access Decisions
+    'access.fullAccess': 'Толық қолжетімділік',
+    'access.limitedAccess': 'Шектеулі қолжетімділік',
+    'access.maskedAccess': 'Маскирленген қолжетімділік',
+    'access.denied': 'Қолжетімділік тыйымдалды',
+    'access.stepUpRequired': 'Қосымша аутентификация қажет',
+    'access.blocked': 'Бұғатталды',
+    'access.sessionLocked': 'Сеанс критикалық тәуекелінің сәтінен құшталды',
+
+    // Threat Types
+    'threat.normal': 'Қалыпты пайдаланушы',
+    'threat.suspicious': 'Шамалы мінез-құлық',
+    'threat.bot': 'Мүмкін бот',
+    'threat.hijacking': 'Мүмкін сеанс ысырма',
+
+    // Critical Mode
+    'critical.event': 'Қауіпсіздік бойынша маңызды оқиға',
+    'critical.title': 'Сеанс ысырмасы анықталды',
+    'critical.terminate': 'Сеанс келесілердің соңында сәтіннен бітеді',
+    'critical.isolation': 'Жоғары тәуекел позициясы тез ізоляцияны талап етеді.',
+
+    // Step-up Authentication
+    'stepup.title': 'Қосымша аутентификация',
+    'stepup.subtitle': 'OTP кодын енгізіңіз:',
+    'stepup.otpPlaceholder': 'OTP',
+    'stepup.verify': 'Растау',
+    'stepup.cancel': 'Бойын тарту',
+
+    // Admin Analytics
+    'admin.title': 'Қауіпсіздік аналитикасы консолі',
+    'admin.subtitle': 'Пайдаланушыларды, сеансты, тәуекелді және қауіпсіздік оқиғасын бір байлау тәсіліндегі мониторинг қойыңыз, рөлге ішінбедгі әрекеттері және өндіктерінің қауіп позициясы индикаторлары.',
+    'admin.currentPosture': 'Ағымдағы позиция',
+    'admin.threatsToday': 'Бүгін қауіптері',
+    'admin.healthScore': 'Қауіпсіздік сау болу ұпайы',
+    'admin.derived': 'Сенім, құшталған сеансы және тәуекел іс-әрекетінен алынады.',
+    'admin.systemStable': 'Жүйе ондық',
+    'admin.activeThreats': 'Белсенді қауіптері',
+    'admin.usersTable': 'Пайдаланушылар тәуекелінің кестесі',
+    'admin.compactView': 'SOC сипаттамасын құрастырмасы. Негіз айырмасы және істерін барлау үшін қатарды басыңыз.',
+    'admin.adminActions': 'Администратор бәктің іс-әрекеттері',
+    'admin.username': 'Пайдаланушы аты',
+    'admin.role': 'Рөлі',
+    'admin.currentRisk': 'Ағымдағы тәуекел',
+    'admin.trustScore': 'Сенім',
+    'admin.riskLevel': 'Тәуекел деңгейі',
+    'admin.accessDecision': 'Қолжетімділік шешімі',
+    'admin.sessionStatus': 'Сеанс状態',
+    'admin.lastActivity': 'Соңғы іс-әрекет',
+    'admin.actions': 'Әрекеттер',
+    'admin.userDetail': 'Пайдаланушы айыптау тақтасы',
+    'admin.selectUser': 'Негіз айырмасы және істерін барлау үшін пайдаланушыны таңдаңыз.',
+    'admin.selectedUser': 'Таңдалған пайдаланушы',
+    'admin.baselineTyping': 'Негіз пернетақта басуы',
+    'admin.currentTyping': 'Ағымдағы пернетақта басуы',
+    'admin.typingDeviation': 'Пернетақта басуының айырмасы',
+    'admin.threatType': 'Қауіп түрі',
+    'admin.baselineMouse': 'Негіз тышқаны',
+    'admin.currentMouse': 'Ағымдағы тышқаны',
+    'admin.mouseDeviation': 'Тышқан айырмасы',
+    'admin.recentTimeline': 'Жақынды істері',
+    'admin.riskTrend': 'Тәуекел ішіндегі диаграмма',
+    'admin.smoothedMovement': 'Төмен, сараң және критикалық аймақты ығысты қозғалысы.',
+    'admin.securityEvents': 'Қауіпсіздік оқиғасының кестесі',
+    'admin.recentEvents': 'Жақынды оқиғалар.',
+    'admin.timestamp': 'Уақыт белгісі',
+    'admin.event': 'Оқиға',
+    'admin.risk': 'Тәуекел',
+    'admin.systemAction': 'Жүйе әрекеті',
+    'admin.summary': 'Қорытындысы',
+    'admin.totalUsers': 'Барлық пайдаланушылар',
+    'admin.activeSessions': 'Белсенді сеансы',
+    'admin.suspiciousSessions': 'Шамалы сеансы',
+    'admin.blockedSessions': 'Құшталған сеансы',
+    'admin.avgTrust': 'Орталық сенім ұпайы',
+    'admin.highRiskEvents': 'Бүгін жоғары тәуекелді оқиғалар',
+    'admin.failedLogins': 'Бүгін сәтсіз кірістер',
+    'admin.lockedAccounts': 'Құшталған есептіктер',
+    'admin.suspiciousAuth': 'Шамалы аутентификация оқиғалары',
+    'admin.lockSession': 'Сеансты құшту',
+    'admin.confirmLock': 'Сеанс құштау растауы',
+    'admin.lockWarning': 'Бұл таңдалған пайдаланушының сеансын сәтіннен аяқтайды және қауіпсіздік оқиғасын тіркейді.',
+    'admin.locked': 'Сеанс сәтіннен құшталды',
+    'admin.accessRevoked': 'Пайдаланушының қолжетімділігі алынды',
+    'admin.highRiskReason': 'Жоғары мінез-құлық тәуекелі анықталды',
+    'admin.monitoring': 'Мониторинг белсенді',
+    'admin.highConfidence': 'Жоғары сенімді позиция және төмен уязвимость.',
+    'admin.underWatch': 'Қараудың астында',
+    'admin.elevatedExposure': 'Көтерілген уязвимость, ынамсыздықтарға назар салыңыз.',
+    'admin.criticalCondition': 'Критикалық ауырлық',
+    'admin.immediateLow': 'Бетер назар аралық қажет.',
+
+    // Session Status
+    'status.active': 'Белсенді',
+    'status.suspicious': 'Шамалы',
+    'status.stepUpRequired': 'Қосымша аутентификация қажет',
+    'status.readOnly': 'Тек оқу',
+    'status.blocked': 'Бұғатталды',
+
+    // Roles
+    'role.admin': 'Администратор',
+    'role.employee': 'Қызметкер',
+    'role.auditor': 'Аудитор',
+
+    // Events
+    'event.login': 'Сәтті кіру',
+    'event.loginFailed': 'Сәтсіз кіру әрекеті',
+    'event.suspicious': 'Шамалы кіру өндігі',
+    'event.cooldown': 'Кіру реттелген',
+    'event.locked': 'Есептік шамалы іс-әрекетінің сәтінен құшталды',
+    'event.unlocked': 'Есептік құшылды',
+    'event.deviceChange': 'Жаңа құрылғы анықталды',
+    'event.mfaFailed': 'Қосымша аутентификация сәтсіз',
+    'event.mfaSuccess': 'Қосымша аутентификация растандырылды',
+    'event.sessionTerminated': 'Сеанс өлтіру қысымпасы құшталды',
+    'event.adminLocked': 'Сеанс администратор құшталды',
+    'event.adminStepUp': 'Қосымша аутентификация қажет',
+    'event.adminReset': 'Негіз администратор сәтіннен қайта тұрғындалды',
+
+    // General
+    'general.loading': 'Жүктелінеді...',
+    'general.error': 'Қате',
+    'general.success': 'Сәтті',
+    'general.confirm': 'Растау',
+    'general.cancel': 'Бойын тарту',
+  }
+};
+
+/**
+ * Get translation for a key in the current language
+ */
+function t(key, lang = null) {
+  const currentLang = lang || (typeof localStorage !== 'undefined' ? localStorage.getItem('language') : 'en') || 'en';
+  
+  // Try flat key lookup first (e.g., 'login.title')
+  if (translations[currentLang] && key in translations[currentLang]) {
+    return translations[currentLang][key];
+  }
+  
+  // Try nested key lookup (e.g., login.title -> login['title'])
+  const keys = key.split('.');
+  let value = translations[currentLang];
+  
+  for (const k of keys) {
+    if (value && typeof value === 'object' && k in value) {
+      value = value[k];
+    } else {
+      // Fall back to English
+      if (translations['en'] && key in translations['en']) {
+        return translations['en'][key];
+      }
+      return key;
+    }
+  }
+  
+  return typeof value === 'string' ? value : key;
+}
+
+/**
+ * Set the current language
+ */
+function setLanguage(lang) {
+  if (translations[lang]) {
+    localStorage.setItem('language', lang);
+    // Trigger custom event for language change
+    window.dispatchEvent(new CustomEvent('languageChanged', { detail: { language: lang } }));
+  }
+}
+
+/**
+ * Get the current language
+ */
+function getLanguage() {
+  return (typeof localStorage !== 'undefined' ? localStorage.getItem('language') : 'en') || 'en';
+}
+
+/**
+ * Get all available languages
+ */
+function getAvailableLanguages() {
+  return Object.keys(translations);
+}

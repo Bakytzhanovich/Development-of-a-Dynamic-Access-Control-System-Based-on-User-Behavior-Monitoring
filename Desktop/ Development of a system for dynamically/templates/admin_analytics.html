@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Analytics - Dynamic Access Control System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/static/i18n.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'genesis-bg': '#FAFAFA',
+                        'genesis-surface': '#FFFFFF',
+                        'genesis-text': '#0A0A0A',
+                        'genesis-secondary': '#6B6B6B',
+                        'genesis-border': '#E8E8EC',
+                        'genesis-primary': '#6366F1',
+                        'genesis-primary-hover': '#4F46E5',
+                    },
+                    fontFamily: {
+                        'sans': ['DM Sans', 'system-ui', 'sans-serif'],
+                        'mono': ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --bg: #FAFAFA;
+            --surface: #FFFFFF;
+            --text: #0A0A0A;
+            --text-secondary: #6B6B6B;
+            --border: #E8E8EC;
+            --primary: #6366F1;
+            --primary-hover: #4F46E5;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --error: #EF4444;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+
+        .card {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease;
+        }
+
+        .card:hover {
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        .card-interactive {
+            cursor: pointer;
+        }
+
+        .card-interactive:hover {
+            border-color: var(--primary);
+        }
+
+        .card-interactive.active {
+            border: 2px solid var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1), 0 8px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        .btn {
+            border-radius: 6px;
+            padding: 10px 16px;
+            font-weight: 500;
+            font-size: 13px;
+            transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+        }
+
+        .btn-secondary {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        .btn-secondary:hover {
+            background-color: rgba(99, 102, 241, 0.08);
+        }
+
+        .btn-danger {
+            background-color: var(--error);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #DC2626;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-low {
+            background-color: #DBEAFE;
+            color: #1E40AF;
+        }
+
+        .badge-medium {
+            background-color: #FEF3C7;
+            color: #92400E;
+        }
+
+        .badge-high {
+            background-color: #FECACA;
+            color: #7F1D1D;
+        }
+
+        .badge-critical {
+            background-color: #FCA5A5;
+            color: #7F1D1D;
+        }
+
+        .badge-active {
+            background-color: #DCFCE7;
+            color: #166534;
+        }
+
+        .badge-blocked {
+            background-color: #FEE2E2;
+            color: #991B1B;
+        }
+
+        .stat-card {
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            border-radius: 12px;
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 4px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            background-color: var(--bg);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        tbody td {
+            border-bottom: 1px solid var(--border);
+            padding: 12px 16px;
+            font-size: 13px;
+        }
+
+        tbody tr {
+            transition: background-color 0.2s ease;
+        }
+
+        tbody tr:hover {
+            background-color: rgba(99, 102, 241, 0.04);
+        }
+
+        tbody tr.row-interactive {
+            cursor: pointer;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            display: flex;
+            align-items: flex-end;
+            gap: 4px;
+            padding: 16px 0;
+        }
+
+        .chart-bar {
+            flex: 1;
+            background-color: var(--primary);
+            border-radius: 4px 4px 0 0;
+            min-height: 2px;
+            transition: all 0.2s ease;
+        }
+
+        .chart-bar:hover {
+            background-color: var(--primary-hover);
+            box-shadow: 0 0 12px rgba(99, 102, 241, 0.35);
+        }
+
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.4);
+            z-index: 40;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-backdrop.visible {
+            display: flex;
+        }
+
+        .modal-card {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(16px) scale(0.96);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Navigation -->
+    <nav class="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--surface)] backdrop-blur-sm">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="font-semibold text-sm" data-i18n="admin.title" style="color: var(--primary);">Security Analytics</div>
+            <div class="flex items-center gap-4 text-sm">
+                <a href="/dashboard" class="px-3 py-2 rounded-6px text-[var(--text-secondary)] hover:text-[var(--text)] font-medium" data-i18n="nav.dashboard">Dashboard</a>
+                <div class="flex items-center gap-2 text-[var(--text-secondary)]">
+                    <span data-i18n="nav.user">User</span>: <span id="usernameDisplay" class="font-semibold text-[var(--text)]">--</span>
+                </div>
+                <button onclick="logout()" class="btn btn-danger" data-i18n="nav.logout">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+        <!-- Page Header -->
+        <div>
+            <h1 class="text-2xl font-bold mb-1" data-i18n="admin.title">Security Analytics Console</h1>
+            <p class="text-sm text-[var(--text-secondary)]" data-i18n="admin.subtitle">Monitor security posture and user risk</p>
+        </div>
+
+        <!-- Overview Stats -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="stat-card">
+                <div class="stat-value" id="totalUsers">0</div>
+                <div class="stat-label" data-i18n="admin.totalUsers">Total Users</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="activeSessions">0</div>
+                <div class="stat-label" data-i18n="admin.activeSessions">Active Sessions</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="suspiciousSessions">0</div>
+                <div class="stat-label" data-i18n="admin.suspiciousSessions">Suspicious</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="blockedSessions">0</div>
+                <div class="stat-label" data-i18n="admin.blockedSessions">Blocked</div>
+            </div>
+        </div>
+
+        <!-- Current Posture & Health Score -->
+        <div class="grid lg:grid-cols-2 gap-4">
+            <div class="card p-4">
+                <h3 class="font-semibold text-sm mb-4" data-i18n="admin.currentPosture">Current Posture</h3>
+                <div id="postureContent" class="space-y-3">
+                    <div>
+                        <div class="text-xs text-[var(--text-secondary)] uppercase tracking-wide font-medium mb-1" data-i18n="admin.systemStable">System Status</div>
+                        <div class="inline-block badge badge-active">Stable</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-[var(--text-secondary)] uppercase tracking-wide font-medium mb-1" data-i18n="admin.activeThreats">Active Threats</div>
+                        <div id="activeThreatsCount" class="text-2xl font-bold text-[var(--text)]">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-4">
+                <h3 class="font-semibold text-sm mb-4" data-i18n="admin.healthScore">Security Health Score</h3>
+                <div class="text-4xl font-bold text-[var(--primary)] mb-2" id="healthScore">100</div>
+                <p class="text-xs text-[var(--text-secondary)]" data-i18n="admin.derived">Derived from trust, blocked sessions, and risk activity.</p>
+            </div>
+        </div>
+
+        <!-- Users Risk Table -->
+        <div class="card p-4">
+            <h3 class="font-semibold text-sm mb-3" data-i18n="admin.usersTable">Users Risk Table</h3>
+            <p class="text-xs text-[var(--text-secondary)] mb-4" data-i18n="admin.compactView">Click a row to inspect details</p>
+            <div class="overflow-x-auto">
+                <table>
+                    <thead>
+                        <tr>
+                            <th data-i18n="admin.username">Username</th>
+                            <th data-i18n="admin.role">Role</th>
+                            <th data-i18n="admin.currentRisk">Current Risk</th>
+                            <th data-i18n="admin.trustScore">Trust Score</th>
+                            <th data-i18n="admin.riskLevel">Risk Level</th>
+                            <th data-i18n="admin.accessDecision">Decision</th>
+                            <th data-i18n="admin.sessionStatus">Session</th>
+                            <th data-i18n="admin.lastActivity">Last Activity</th>
+                            <th data-i18n="admin.actions">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        <tr><td colspan="9" class="text-center py-8 text-[var(--text-secondary)]" data-i18n="general.loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- User Detail Panel & Risk Trend -->
+        <div class="grid lg:grid-cols-3 gap-4">
+            <div class="card p-4 lg:col-span-2">
+                <h3 class="font-semibold text-sm mb-4" data-i18n="admin.userDetail">User Detail Panel</h3>
+                <div id="userDetailContent" class="text-sm text-[var(--text-secondary)]" data-i18n="admin.selectUser">Select a user to inspect details</div>
+            </div>
+
+            <div class="card p-4">
+                <h3 class="font-semibold text-sm mb-4" data-i18n="admin.riskTrend">Risk Trend</h3>
+                <div class="chart-container" id="riskChartContainer">
+                    <div class="text-sm text-[var(--text-secondary)] text-center w-full py-8" data-i18n="general.loading">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Events -->
+        <div class="card p-4">
+            <h3 class="font-semibold text-sm mb-3" data-i18n="admin.securityEvents">Security Events</h3>
+            <p class="text-xs text-[var(--text-secondary)] mb-4" data-i18n="admin.recentEvents">Recent activity</p>
+            <div class="overflow-x-auto">
+                <table>
+                    <thead>
+                        <tr>
+                            <th data-i18n="admin.timestamp">Timestamp</th>
+                            <th data-i18n="admin.username">User</th>
+                            <th data-i18n="admin.event">Event</th>
+                            <th data-i18n="admin.risk">Risk</th>
+                            <th data-i18n="admin.systemAction">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="eventsTableBody">
+                        <tr><td colspan="5" class="text-center py-8 text-[var(--text-secondary)]" data-i18n="general.loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Lock Session Modal -->
+    <div id="lockModal" class="modal-backdrop">
+        <div class="modal-card">
+            <h3 class="font-semibold text-lg mb-3" data-i18n="admin.lockSession">Lock Session</h3>
+            <p class="text-sm text-[var(--text-secondary)] mb-4" data-i18n="admin.confirmLock">Confirm session lock</p>
+            <p class="text-xs text-[var(--text-secondary)] mb-4" data-i18n="admin.lockWarning">This will terminate the selected user's session.</p>
+            <div id="lockUsername" class="text-sm font-semibold mb-4 text-[var(--primary)]">--</div>
+            <div class="flex justify-end gap-2">
+                <button onclick="closeLockModal()" class="btn btn-secondary" data-i18n="general.cancel">Cancel</button>
+                <button onclick="confirmLock()" class="btn btn-danger" data-i18n="admin.lockSession">Lock</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('access_token');
+        const username = localStorage.getItem('username');
+        const role = localStorage.getItem('role') || 'employee';
+
+        if (!token || role !== 'admin') {
+            window.location.href = '/dashboard';
+        }
+
+        document.getElementById('usernameDisplay').textContent = username || 'unknown';
+
+        // Initialize language
+        function initLanguage() {
+            const lang = getLanguage();
+            updatePageText(lang);
+        }
+
+        function updatePageText(lang) {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.dataset.i18n;
+                el.textContent = t(key, lang);
+            });
+
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.dataset.i18nPlaceholder;
+                el.placeholder = t(key, lang);
+            });
+        }
+
+        function api(path, method='GET', body=null) {
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers.Authorization = `Bearer ${token}`;
+            return fetch(path, {
+                method,
+                headers,
+                body: body ? JSON.stringify(body) : null
+            });
+        }
+
+        function logout() {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('username');
+            localStorage.removeItem('role');
+            window.location.href = '/login';
+        }
+
+        function getRiskBadge(risk) {
+            const lang = getLanguage();
+            if (risk >= 80) {
+                return `<span class="badge badge-critical">${t('risk.critical', lang)}</span>`;
+            } else if (risk >= 60) {
+                return `<span class="badge badge-high">${t('risk.high', lang)}</span>`;
+            } else if (risk >= 40) {
+                return `<span class="badge badge-medium">${t('risk.medium', lang)}</span>`;
+            } else {
+                return `<span class="badge badge-low">${t('risk.low', lang)}</span>`;
+            }
+        }
+
+        function getStatusBadge(status) {
+            const lang = getLanguage();
+            if (status === 'active') return `<span class="badge badge-active">${t('status.active', lang)}</span>`;
+            if (status === 'suspicious') return `<span class="badge badge-medium">${t('status.suspicious', lang)}</span>`;
+            if (status === 'blocked') return `<span class="badge badge-blocked">${t('status.blocked', lang)}</span>`;
+            return `<span class="badge badge-low">${status}</span>`;
+        }
+
+        async function loadData() {
+            try {
+                const res = await api('/api/admin/analytics/summary');
+                const data = await res.json();
+                
+                if (res.status !== 200) {
+                    window.location.href = '/dashboard';
+                    return;
+                }
+
+                document.getElementById('totalUsers').textContent = data.total_users || 0;
+                document.getElementById('activeSessions').textContent = data.active_sessions || 0;
+                document.getElementById('suspiciousSessions').textContent = data.suspicious_sessions || 0;
+                document.getElementById('blockedSessions').textContent = data.blocked_sessions || 0;
+                document.getElementById('healthScore').textContent = Math.round(data.health_score || 100);
+                document.getElementById('activeThreatsCount').textContent = (data.suspicious_sessions || 0) + (data.blocked_sessions || 0);
+            } catch (error) {
+                console.error('Failed to load analytics summary:', error);
+            }
+        }
+
+        async function loadUsers() {
+            try {
+                const res = await api('/api/admin/analytics/users');
+                const data = await res.json();
+                const tbody = document.getElementById('usersTableBody');
+                tbody.innerHTML = '';
+
+                if (!data.users || data.users.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-[var(--text-secondary)]">No users found</td></tr>';
+                    return;
+                }
+
+                data.users.forEach(user => {
+                    const row = document.createElement('tr');
+                    row.className = 'row-interactive';
+                    row.onclick = () => loadUserDetail(user.username);
+                    
+                    const lang = getLanguage();
+                    row.innerHTML = `
+                        <td class="font-semibold">${user.username}</td>
+                        <td>${t(`role.${user.role}`, lang) || user.role}</td>
+                        <td><strong>${user.current_risk.toFixed(1)}</strong></td>
+                        <td>${user.trust_score.toFixed(1)}</td>
+                        <td>${getRiskBadge(user.current_risk)}</td>
+                        <td class="text-xs">${user.access_decision || 'N/A'}</td>
+                        <td>${getStatusBadge(user.session_status)}</td>
+                        <td class="text-xs text-[var(--text-secondary)]">${new Date(user.last_activity).toLocaleString()}</td>
+                        <td><button class="btn btn-danger btn-sm" onclick="openLockModal('${user.username}')" data-i18n="admin.lockSession">Lock</button></td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Failed to load users:', error);
+            }
+        }
+
+        async function loadUserDetail(username) {
+            try {
+                const res = await api(`/api/admin/analytics/user/${username}`);
+                const data = await res.json();
+
+                const lang = getLanguage();
+                const content = document.getElementById('userDetailContent');
+                content.innerHTML = `
+                    <div class="space-y-4">
+                        <div>
+                            <div class="text-xs uppercase tracking-wide font-semibold text-[var(--text-secondary)] mb-1" data-i18n="admin.selectedUser">Selected User</div>
+                            <div class="font-mono">${data.username}</div>
+                        </div>
+                        <div>
+                            <div class="text-xs uppercase tracking-wide font-semibold text-[var(--text-secondary)] mb-1" data-i18n="admin.baselineTyping">Baseline Typing</div>
+                            <div class="font-mono">${data.baseline_typing_speed?.toFixed(2) || 'N/A'} CPM</div>
+                        </div>
+                        <div>
+                            <div class="text-xs uppercase tracking-wide font-semibold text-[var(--text-secondary)] mb-1" data-i18n="admin.currentTyping">Current Typing</div>
+                            <div class="font-mono">${data.current_typing_speed?.toFixed(2) || 'N/A'} CPM</div>
+                        </div>
+                        <div>
+                            <div class="text-xs uppercase tracking-wide font-semibold text-[var(--text-secondary)] mb-1" data-i18n="admin.baselineMouse">Baseline Mouse</div>
+                            <div class="font-mono">${data.baseline_mouse_velocity?.toFixed(2) || 'N/A'} px/ms</div>
+                        </div>
+                        <div>
+                            <div class="text-xs uppercase tracking-wide font-semibold text-[var(--text-secondary)] mb-1" data-i18n="admin.currentMouse">Current Mouse</div>
+                            <div class="font-mono">${data.current_mouse_velocity?.toFixed(2) || 'N/A'} px/ms</div>
+                        </div>
+                        <div>
+                            <div class="text-xs uppercase tracking-wide font-semibold text-[var(--text-secondary)] mb-1" data-i18n="admin.threatType">Threat Type</div>
+                            <div>${data.threat_type || 'Normal'}</div>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Failed to load user detail:', error);
+            }
+        }
+
+        async function loadEvents() {
+            try {
+                const res = await api('/api/admin/analytics/events');
+                const data = await res.json();
+                const tbody = document.getElementById('eventsTableBody');
+                tbody.innerHTML = '';
+
+                if (!data.events || data.events.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-[var(--text-secondary)]">No events found</td></tr>';
+                    return;
+                }
+
+                data.events.forEach(event => {
+                    const row = document.createElement('tr');
+                    const lang = getLanguage();
+                    row.innerHTML = `
+                        <td class="text-xs text-[var(--text-secondary)]">${new Date(event.timestamp).toLocaleString()}</td>
+                        <td class="font-semibold">${event.username}</td>
+                        <td class="text-xs">${event.event}</td>
+                        <td>${getRiskBadge(event.risk_score)}</td>
+                        <td class="text-xs">${event.system_action || 'None'}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Failed to load events:', error);
+            }
+        }
+
+        async function loadRiskTrend() {
+            try {
+                const res = await api('/api/admin/analytics/risk-trend');
+                const data = await res.json();
+
+                const container = document.getElementById('riskChartContainer');
+                if (!data.trend || data.trend.length === 0) {
+                    container.innerHTML = '<div class="w-full text-center text-[var(--text-secondary)]">No data available</div>';
+                    return;
+                }
+
+                const maxRisk = Math.max(...data.trend);
+                container.innerHTML = data.trend.map(risk => {
+                    const height = (risk / (maxRisk || 1)) * 100;
+                    return `<div class="chart-bar" style="height: ${height}%;" title="${risk.toFixed(1)}"></div>`;
+                }).join('');
+            } catch (error) {
+                console.error('Failed to load risk trend:', error);
+            }
+        }
+
+        function openLockModal(username) {
+            document.getElementById('lockUsername').textContent = username;
+            document.getElementById('lockModal').classList.add('visible');
+        }
+
+        function closeLockModal() {
+            document.getElementById('lockModal').classList.remove('visible');
+        }
+
+        async function confirmLock() {
+            const username = document.getElementById('lockUsername').textContent;
+            try {
+                const res = await api(`/api/admin/lock-user/${username}`, 'POST');
+                if (res.ok) {
+                    closeLockModal();
+                    alert('Session locked successfully');
+                    loadUsers();
+                    loadEvents();
+                } else {
+                    alert('Failed to lock session');
+                }
+            } catch (error) {
+                console.error('Failed to lock session:', error);
+            }
+        }
+
+        // Listen for language change
+        window.addEventListener('languageChanged', (e) => {
+            updatePageText(e.detail.language);
+            loadUsers();
+            loadEvents();
+        });
+
+        // Initialize
+        initLanguage();
+        loadData();
+        loadUsers();
+        loadEvents();
+        loadRiskTrend();
+
+        // Refresh data periodically
+        setInterval(() => {
+            loadData();
+            loadUsers();
+            loadEvents();
+            loadRiskTrend();
+        }, 10000);
+    </script>
+</body>
+</html>
