@@ -6,25 +6,16 @@
     <title>Dashboard - Dynamic Access Control System</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700;900&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/static/i18n.js"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    colors: {
-                        'genesis-bg': '#FAFAFA',
-                        'genesis-surface': '#FFFFFF',
-                        'genesis-text': '#0A0A0A',
-                        'genesis-secondary': '#6B6B6B',
-                        'genesis-border': '#E8E8EC',
-                        'genesis-primary': '#6366F1',
-                        'genesis-primary-hover': '#4F46E5',
-                    },
                     fontFamily: {
-                        'sans': ['DM Sans', 'system-ui', 'sans-serif'],
-                        'mono': ['JetBrains Mono', 'monospace'],
+                        'sans': ['Roboto', 'system-ui', 'sans-serif'],
+                        'mono': ['Roboto Mono', 'ui-monospace', 'monospace'],
                     }
                 }
             }
@@ -32,223 +23,566 @@
     </script>
     <style>
         :root {
-            --bg: #FAFAFA;
-            --surface: #FFFFFF;
-            --text: #0A0A0A;
-            --text-secondary: #6B6B6B;
-            --border: #E8E8EC;
-            --primary: #6366F1;
-            --primary-hover: #4F46E5;
-            --success: #10B981;
-            --warning: #F59E0B;
-            --error: #EF4444;
+            --bg-deep: #05060B;
+            --bg: #0A0D17;
+            --surface: rgba(20, 24, 38, 0.55);
+            --surface-strong: rgba(28, 32, 48, 0.78);
+            --surface-alt: rgba(255, 255, 255, 0.04);
+            --text: #ECEFF7;
+            --text-secondary: #8B95B0;
+            --text-muted: #5C6478;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-strong: rgba(255, 255, 255, 0.16);
+            --primary: #FFFFFF;
+            --accent-red: #FF3B47;
+            --accent-red-dark: #C72532;
+            --accent-red-bg: rgba(255, 59, 71, 0.12);
+            --accent-red-glow: rgba(255, 59, 71, 0.55);
+            --neon-cyan: #66E0FF;
+            --warning: #FFB300;
+            --warning-bg: rgba(255, 179, 0, 0.12);
+            --success: #00E676;
+            --success-bg: rgba(0, 230, 118, 0.12);
         }
+
+        * { font-family: 'Roboto', system-ui, sans-serif; box-sizing: border-box; }
+
+        html, body { margin: 0; }
 
         body {
-            background-color: var(--bg);
+            background:
+                radial-gradient(ellipse at 90% 10%, rgba(255, 59, 71, 0.06), transparent 50%),
+                radial-gradient(ellipse at 10% 90%, rgba(102, 224, 255, 0.05), transparent 50%),
+                linear-gradient(180deg, var(--bg-deep) 0%, var(--bg) 100%);
             color: var(--text);
+            min-height: 100vh;
+            letter-spacing: 0.01em;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(8px); }
+        .font-mono, [class*="font-mono"] { font-family: 'Roboto Mono', ui-monospace, monospace !important; }
+
+        #threeBg {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .vignette {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+            background: radial-gradient(ellipse at center, transparent 0%, rgba(5, 6, 11, 0.7) 95%);
+            pointer-events: none;
+        }
+
+        .scanlines {
+            position: fixed;
+            inset: 0;
+            z-index: 2;
+            pointer-events: none;
+            background-image: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.01) 0px, rgba(255, 255, 255, 0.01) 1px, transparent 1px, transparent 3px);
+            mix-blend-mode: overlay;
+            opacity: 0.3;
+        }
+
+        nav, main, .modal-root, #criticalBanner { position: relative; z-index: 10; }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
-        @keyframes criticalPulse {
-            0%, 100% { box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.2), 0 0 20px rgba(239, 68, 68, 0.15); }
-            50% { box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.4), 0 0 30px rgba(239, 68, 68, 0.25); }
+        @keyframes glowPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255, 59, 71, 0.35); }
+            50% { box-shadow: 0 0 24px 4px rgba(255, 59, 71, 0.55); }
         }
-
+        @keyframes criticalPulse {
+            0%, 100% {
+                box-shadow:
+                    0 0 0 1px rgba(255, 59, 71, 0.45),
+                    0 0 30px rgba(255, 59, 71, 0.35),
+                    0 20px 60px rgba(0, 0, 0, 0.5);
+            }
+            50% {
+                box-shadow:
+                    0 0 0 2px rgba(255, 59, 71, 0.8),
+                    0 0 50px rgba(255, 59, 71, 0.55),
+                    0 20px 60px rgba(0, 0, 0, 0.5);
+            }
+        }
+        @keyframes badgePulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255, 59, 71, 0.5); }
+            50% { box-shadow: 0 0 0 6px rgba(255, 59, 71, 0); }
+        }
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
             25% { transform: translateX(-2px); }
             50% { transform: translateX(2px); }
             75% { transform: translateX(-1px); }
         }
+        @keyframes fillBar {
+            from { width: 0%; }
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
 
-        .fade-in { animation: fadeIn 0.4s ease-out; }
-        .critical-glow { animation: criticalPulse 1.2s ease-in-out infinite; }
+        .fade-up { animation: fadeUp 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+        .critical-glow { animation: criticalPulse 1.4s ease-in-out infinite; }
         .critical-shake { animation: shake 0.3s ease-in-out infinite; }
 
-        .card {
-            background-color: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-            transition: all 0.2s ease;
+        /* Navigation */
+        .nav {
+            position: sticky;
+            top: 0;
+            z-index: 30;
+            background: rgba(10, 13, 23, 0.65);
+            backdrop-filter: blur(20px) saturate(140%);
+            -webkit-backdrop-filter: blur(20px) saturate(140%);
+            border-bottom: 1px solid var(--border);
         }
-
-        .card:hover {
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+        .nav-inner {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 16px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
-
-        .btn {
-            border-radius: 6px;
-            padding: 10px 16px;
+        .nav-link {
+            padding: 8px 14px;
+            border-radius: 9999px;
+            color: var(--text-secondary);
+            font-size: 12px;
             font-weight: 500;
-            font-size: 13px;
             transition: all 0.2s ease;
-            border: none;
-            cursor: pointer;
+            text-decoration: none;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
         }
+        .nav-link:hover {
+            color: var(--text);
+            background: var(--surface-alt);
+        }
+        .nav-link.nav-link-primary {
+            color: var(--text);
+            background: var(--surface-alt);
+            border: 1px solid var(--border);
+        }
+        .nav-link.nav-link-primary:hover { border-color: var(--accent-red); }
+
+        .brand-mark {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--accent-red) 0%, #B71929 100%);
+            color: #FFFFFF;
+            font-weight: 900;
+            font-size: 15px;
+            box-shadow: 0 4px 14px rgba(255, 59, 71, 0.4);
+        }
+
+        /* Glass card */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            backdrop-filter: blur(16px) saturate(140%);
+            -webkit-backdrop-filter: blur(16px) saturate(140%);
+            box-shadow:
+                0 1px 0 rgba(255, 255, 255, 0.04) inset,
+                0 10px 40px rgba(0, 0, 0, 0.35);
+            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+            transform-style: preserve-3d;
+            animation: fadeUp 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+        }
+        .card:hover {
+            border-color: var(--border-strong);
+            box-shadow:
+                0 1px 0 rgba(255, 255, 255, 0.07) inset,
+                0 18px 60px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(255, 59, 71, 0.08);
+        }
+        .card.is-critical {
+            border-color: rgba(255, 59, 71, 0.45) !important;
+            animation: criticalPulse 1.4s ease-in-out infinite;
+        }
+
+        /* Pill buttons */
+        .btn {
+            border-radius: 9999px;
+            padding: 9px 18px;
+            font-weight: 500;
+            font-size: 12px;
+            line-height: 1;
+            transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+            border: 1px solid transparent;
+            cursor: pointer;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-family: 'Roboto', sans-serif;
+        }
+        .btn:hover:not(:disabled) { transform: translateY(-1px); }
+        .btn:active:not(:disabled) { transform: translateY(0); }
+        .btn:disabled { cursor: not-allowed; opacity: 0.4; transform: none; }
 
         .btn-primary {
-            background-color: var(--primary);
-            color: white;
+            background: linear-gradient(135deg, #FFFFFF 0%, #E8ECF4 100%);
+            color: #0A0D17;
+            box-shadow: 0 6px 18px rgba(255, 255, 255, 0.12);
         }
-
-        .btn-primary:hover {
-            background-color: var(--primary-hover);
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+        .btn-primary:hover:not(:disabled) {
+            box-shadow: 0 10px 28px rgba(255, 255, 255, 0.2);
         }
 
         .btn-secondary {
-            background-color: var(--surface);
+            background: var(--surface-alt);
             border: 1px solid var(--border);
             color: var(--text);
         }
-
-        .btn-secondary:hover {
-            background-color: rgba(99, 102, 241, 0.08);
+        .btn-secondary:hover:not(:disabled) {
+            border-color: var(--border-strong);
+            background: rgba(255, 255, 255, 0.08);
         }
 
         .btn-danger {
-            background-color: var(--error);
-            color: white;
+            background: linear-gradient(135deg, var(--accent-red) 0%, var(--accent-red-dark) 100%);
+            color: #FFFFFF;
+            box-shadow: 0 6px 18px rgba(255, 59, 71, 0.35);
+        }
+        .btn-danger:hover:not(:disabled) {
+            box-shadow: 0 10px 28px rgba(255, 59, 71, 0.5);
         }
 
-        .btn-danger:hover {
-            background-color: #DC2626;
+        .btn-warning {
+            background: linear-gradient(135deg, var(--warning) 0%, #E69500 100%);
+            color: #0A0D17;
+            box-shadow: 0 6px 18px rgba(255, 179, 0, 0.3);
+        }
+        .btn-warning:hover:not(:disabled) {
+            box-shadow: 0 10px 28px rgba(255, 179, 0, 0.45);
         }
 
+        /* Badges */
         .badge {
-            display: inline-block;
-            padding: 4px 12px;
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 11px;
             border-radius: 9999px;
-            font-size: 12px;
-            font-weight: 500;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            border: 1px solid transparent;
+            line-height: 1.4;
         }
-
         .badge-low {
-            background-color: #DBEAFE;
-            color: #1E40AF;
+            background: var(--success-bg);
+            color: var(--success);
+            border-color: rgba(0, 230, 118, 0.25);
         }
-
         .badge-medium {
-            background-color: #FEF3C7;
-            color: #92400E;
+            background: var(--warning-bg);
+            color: var(--warning);
+            border-color: rgba(255, 179, 0, 0.3);
         }
-
         .badge-high {
-            background-color: #FECACA;
-            color: #7F1D1D;
+            background: var(--accent-red-bg);
+            color: #FF8A93;
+            border-color: rgba(255, 59, 71, 0.3);
         }
-
         .badge-critical {
-            background-color: #FCA5A5;
-            color: #7F1D1D;
-            animation: criticalPulse 1.5s ease-in-out infinite;
+            background: var(--accent-red);
+            color: #FFFFFF;
+            border-color: var(--accent-red);
+            animation: badgePulse 1.4s ease-in-out infinite;
+            box-shadow: 0 0 16px rgba(255, 59, 71, 0.45);
+        }
+        .badge-neutral {
+            background: var(--surface-alt);
+            color: var(--text-secondary);
+            border-color: var(--border);
         }
 
+        /* Risk bar */
         .risk-bar {
-            height: 6px;
-            background-color: var(--border);
-            border-radius: 3px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 9999px;
             overflow: hidden;
+            position: relative;
         }
-
         .risk-bar-fill {
             height: 100%;
-            background: linear-gradient(90deg, #10B981 0%, #F59E0B 50%, #EF4444 100%);
-            transition: width 0.3s ease;
+            background: linear-gradient(90deg, var(--success) 0%, var(--warning) 55%, var(--accent-red) 100%);
+            transition: width 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+            animation: fillBar 0.7s ease-out;
+            border-radius: 9999px;
+            box-shadow: 0 0 12px rgba(255, 59, 71, 0.4);
+            position: relative;
+        }
+        .risk-bar-fill::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            background-size: 200% 100%;
+            animation: shimmer 2.5s linear infinite;
         }
 
+        /* Status bar */
         .status-bar {
             padding: 12px 16px;
-            border-radius: 6px;
-            border-left: 4px solid;
-            margin-bottom: 16px;
+            border-radius: 10px;
+            border-left: 3px solid;
+            font-size: 13px;
+            backdrop-filter: blur(8px);
+            background: var(--surface);
         }
-
         .status-bar-info {
-            border-color: var(--primary);
-            background-color: rgba(99, 102, 241, 0.08);
-            color: var(--primary);
+            border-color: var(--neon-cyan);
+            color: var(--neon-cyan);
         }
-
         .status-bar-warning {
             border-color: var(--warning);
-            background-color: rgba(245, 158, 11, 0.08);
-            color: #B45309;
+            background: var(--warning-bg);
+            color: #FFD17A;
         }
-
         .status-bar-error {
-            border-color: var(--error);
-            background-color: rgba(239, 68, 68, 0.08);
-            color: #991B1B;
+            border-color: var(--accent-red);
+            background: var(--accent-red-bg);
+            color: #FFB1B7;
+            box-shadow: 0 0 24px rgba(255, 59, 71, 0.25);
         }
-
         .status-bar-success {
             border-color: var(--success);
-            background-color: rgba(16, 185, 129, 0.08);
-            color: #065F46;
+            background: var(--success-bg);
+            color: #7FF0B3;
         }
 
+        /* Risk pill */
         .risk-pill {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 13px;
-            font-weight: 500;
+            padding: 4px 11px;
+            border-radius: 9999px;
+            font-size: 10.5px;
+            font-weight: 600;
             border: 1px solid;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
         }
-
         .risk-pill-low {
-            background-color: #ECFDF5;
-            border-color: #CCFBF1;
-            color: #047857;
+            background: var(--success-bg);
+            border-color: rgba(0, 230, 118, 0.3);
+            color: var(--success);
         }
-
         .risk-pill-medium {
-            background-color: #FFFBEB;
-            border-color: #FEF3C7;
-            color: #B45309;
+            background: var(--warning-bg);
+            border-color: rgba(255, 179, 0, 0.3);
+            color: var(--warning);
         }
-
         .risk-pill-high {
-            background-color: #FEF2F2;
-            border-color: #FECACA;
-            color: #7F1D1D;
+            background: var(--accent-red-bg);
+            border-color: rgba(255, 59, 71, 0.3);
+            color: #FF8A93;
+        }
+        .risk-pill-critical {
+            background: var(--accent-red);
+            border-color: var(--accent-red);
+            color: #FFFFFF;
+            animation: badgePulse 1.4s ease-in-out infinite;
         }
 
-        .risk-pill-critical {
-            background-color: #FEF2F2;
-            border-color: #FECACA;
-            color: #991B1B;
-            animation: criticalPulse 1.5s ease-in-out infinite;
+        /* Section heading */
+        .section-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
+        .section-title::before {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: var(--accent-red);
+            box-shadow: 0 0 8px var(--accent-red);
+            animation: blink 2s ease-in-out infinite;
+        }
+
+        .metric-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        .metric-value {
+            font-size: 13px;
+            color: var(--text);
+            font-weight: 500;
+        }
+        .metric-big {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text);
+            line-height: 1;
+            letter-spacing: -0.02em;
+            font-variant-numeric: tabular-nums;
+        }
+        .metric-big.is-critical {
+            color: var(--accent-red);
+            text-shadow: 0 0 18px rgba(255, 59, 71, 0.55);
+        }
+        .metric-big.is-warning { color: var(--warning); }
+
+        /* Language switcher */
+        .language-switch {
+            display: inline-flex;
+            padding: 3px;
+            background: var(--surface-alt);
+            border: 1px solid var(--border);
+            border-radius: 9999px;
+        }
+        .language-switch button {
+            padding: 5px 11px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 10.5px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            border-radius: 9999px;
+            transition: all 0.2s ease;
+            font-family: 'Roboto', sans-serif;
+            letter-spacing: 0.08em;
+        }
+        .language-switch button.active {
+            background: linear-gradient(135deg, #FFFFFF 0%, #E8ECF4 100%);
+            color: #0A0D17;
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.18);
+        }
+        .language-switch button:hover:not(.active) { color: var(--text); }
+
+        /* Timeline */
+        .timeline-row {
+            padding: 6px 0;
+            border-bottom: 1px dashed var(--border);
+            font-size: 11.5px;
+            color: var(--text-secondary);
+            font-family: 'Roboto Mono', monospace;
+            animation: fadeUp 0.3s ease-out;
+        }
+        .timeline-row:last-child { border-bottom: none; }
+
+        /* Mini stat card (inside breakdown) */
+        .mini-stat {
+            background: var(--surface-alt);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            transition: all 0.2s ease;
+        }
+        .mini-stat:hover {
+            border-color: var(--border-strong);
+            background: rgba(255, 255, 255, 0.06);
+            transform: translateY(-1px);
+        }
+
+        /* Risk factor item */
+        .factor-item {
+            padding: 10px 14px;
+            background: var(--surface-alt);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+        .factor-item:hover {
+            border-color: var(--border-strong);
+            color: var(--text);
+        }
+
+        /* User detail / sensitive data blur */
+        .blur-sm { filter: blur(4px); }
+        .blur-md { filter: blur(10px); }
+
+        /* OTP modal */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 60;
+            background: rgba(5, 6, 11, 0.72);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        /* Critical banner */
+        .critical-banner {
+            background: linear-gradient(135deg, rgba(255, 59, 71, 0.15), rgba(199, 37, 50, 0.12)) !important;
+            border: 1px solid rgba(255, 59, 71, 0.45) !important;
+        }
+
+        /* Tilt fallback for nested cards (Tailwind utility) */
+        .tilt-3d { transform-style: preserve-3d; }
     </style>
 </head>
-<body class="min-h-screen">
+<body>
+    <canvas id="threeBg" data-mode="ambient" data-color="0xFF3B47"></canvas>
+    <div class="vignette"></div>
+    <div class="scanlines"></div>
+
     <!-- Navigation -->
-    <nav class="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--surface)] backdrop-blur-sm">
-        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-            <div class="font-semibold text-sm" data-i18n="nav.dashboard" style="color: var(--primary);">Dashboard</div>
-            <div class="flex items-center gap-4 text-sm">
-                <a id="adminAnalyticsLink" href="/admin/analytics" class="hidden px-3 py-2 rounded-6px text-[var(--primary)] hover:bg-blue-50 font-medium" data-i18n="nav.adminAnalytics">Admin Analytics</a>
-                <div class="flex items-center gap-2 text-[var(--text-secondary)]">
-                    <span data-i18n="nav.user">User</span>: <span id="usernameDisplay" class="font-semibold text-[var(--text)]">--</span>
+    <nav class="nav">
+        <div class="nav-inner">
+            <div class="flex items-center gap-3">
+                <div class="brand-mark">A</div>
+                <div>
+                    <div class="text-[9px] uppercase tracking-[0.25em] text-[var(--accent-red)] font-bold leading-none mb-1">ACCESS CONTROL</div>
+                    <div class="text-sm font-semibold text-[var(--text)] leading-none" data-i18n="nav.dashboard">Dashboard</div>
                 </div>
-                <div class="flex items-center gap-2 text-[var(--text-secondary)]">
-                    <span data-i18n="nav.role">Role</span>: <span id="roleDisplay" class="font-semibold text-[var(--text)]">--</span>
+            </div>
+            <div class="flex items-center gap-3 text-sm">
+                <a id="adminAnalyticsLink" href="/admin/analytics" class="hidden nav-link nav-link-primary" data-i18n="nav.adminAnalytics">Admin Analytics</a>
+                <div class="hidden md:flex items-center gap-1.5 text-[var(--text-secondary)] text-xs">
+                    <span data-i18n="nav.user">User</span>:
+                    <span id="usernameDisplay" class="font-semibold text-[var(--text)]">--</span>
                 </div>
-                <!-- Language Switcher -->
-                <div class="language-switch" style="display: flex; gap: 6px; padding: 4px; background-color: var(--surface); border: 1px solid var(--border); border-radius: 6px;">
-                    <button class="active" data-lang="en" onclick="switchLanguage('en')" style="padding: 6px 12px; border: none; background: transparent; cursor: pointer; font-size: 12px; font-weight: 500; color: var(--text-secondary); border-radius: 4px; transition: all 0.2s ease;" onmouseover="this.style.backgroundColor='rgba(99, 102, 241, 0.08)'" onmouseout="this.style.backgroundColor='transparent'">EN</button>
-                    <button data-lang="ru" onclick="switchLanguage('ru')" style="padding: 6px 12px; border: none; background: transparent; cursor: pointer; font-size: 12px; font-weight: 500; color: var(--text-secondary); border-radius: 4px; transition: all 0.2s ease;" onmouseover="this.style.backgroundColor='rgba(99, 102, 241, 0.08)'" onmouseout="this.style.backgroundColor='transparent'">РУ</button>
-                    <button data-lang="kk" onclick="switchLanguage('kk')" style="padding: 6px 12px; border: none; background: transparent; cursor: pointer; font-size: 12px; font-weight: 500; color: var(--text-secondary); border-radius: 4px; transition: all 0.2s ease;" onmouseover="this.style.backgroundColor='rgba(99, 102, 241, 0.08)'" onmouseout="this.style.backgroundColor='transparent'">ҚҚ</button>
+                <div class="hidden md:flex items-center gap-1.5 text-[var(--text-secondary)] text-xs">
+                    <span data-i18n="nav.role">Role</span>:
+                    <span id="roleDisplay" class="font-semibold text-[var(--text)]">--</span>
+                </div>
+                <div class="language-switch">
+                    <button class="active" data-lang="en" onclick="switchLanguage('en')">EN</button>
+                    <button data-lang="ru" onclick="switchLanguage('ru')">РУ</button>
+                    <button data-lang="kk" onclick="switchLanguage('kk')">ҚҚ</button>
                 </div>
                 <button onclick="logout()" class="btn btn-danger" data-i18n="nav.logout">Logout</button>
             </div>
@@ -256,80 +590,79 @@
     </nav>
 
     <!-- Critical Mode Banner -->
-    <div id="criticalBanner" class="hidden fixed top-20 left-4 right-4 z-50 mx-auto max-w-4xl card border-[var(--error)] bg-red-50 critical-glow p-4 sm:p-5">
+    <div id="criticalBanner" class="hidden fixed top-20 left-4 right-4 mx-auto max-w-3xl card critical-banner critical-glow p-4" style="z-index: 50;">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-                <div class="text-xs uppercase tracking-wide font-semibold text-[var(--error)]" data-i18n="critical.event">Critical Security Event</div>
+                <div class="text-[10px] uppercase tracking-[0.25em] font-bold text-[var(--accent-red)]" data-i18n="critical.event">Critical Security Event</div>
                 <div class="mt-1 text-lg font-bold text-[var(--text)]" data-i18n="critical.title">Possible session hijacking detected</div>
-                <div class="mt-1 text-sm text-[var(--text-secondary)]">
+                <div class="mt-1 text-xs text-[var(--text-secondary)]">
                     <span data-i18n="critical.terminate">Session will terminate in</span>
-                    <span id="criticalCountdown" class="font-bold text-[var(--error)]">5</span>
-                    <span data-i18n="critical.isolation">seconds</span>
+                    <span id="criticalCountdown" class="font-bold text-[var(--accent-red)] text-lg" style="text-shadow: 0 0 12px rgba(255, 59, 71, 0.6);">5</span>
+                    <span data-i18n="login.seconds">seconds</span>
+                    · <span data-i18n="critical.isolation" class="text-[var(--text-secondary)]">High risk posture requires immediate isolation.</span>
                 </div>
             </div>
         </div>
     </div>
 
-    <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+    <main class="max-w-7xl mx-auto px-4 py-5 space-y-4">
         <!-- Status Alert -->
         <div id="statusAlert" class="hidden status-bar"></div>
 
         <!-- Session Context & Access Decision -->
-        <div class="grid lg:grid-cols-4 gap-4">
-            <!-- Session Context Card -->
-            <div class="card p-4">
-                <h3 class="font-semibold text-sm mb-4" data-i18n="dashboard.sessionContext">Session Context</h3>
-                <div class="space-y-3 text-sm text-[var(--text-secondary)]">
+        <div class="grid lg:grid-cols-4 gap-3">
+            <div class="card tilt-3d p-4">
+                <h3 class="section-title" data-i18n="dashboard.sessionContext">Session Context</h3>
+                <div class="space-y-3">
                     <div>
-                        <div class="text-xs uppercase tracking-wide font-medium text-[var(--text)]" data-i18n="dashboard.device">Device</div>
-                        <div id="ctxDevice" class="font-mono text-[var(--text)]">--</div>
+                        <div class="metric-label" data-i18n="dashboard.device">Device</div>
+                        <div id="ctxDevice" class="font-mono text-xs text-[var(--text)] break-all">--</div>
                     </div>
                     <div>
-                        <div class="text-xs uppercase tracking-wide font-medium text-[var(--text)]" data-i18n="dashboard.ip">IP</div>
-                        <div id="ctxIp" class="font-mono text-[var(--text)]">--</div>
+                        <div class="metric-label" data-i18n="dashboard.ip">IP</div>
+                        <div id="ctxIp" class="font-mono text-xs text-[var(--text)]">--</div>
                     </div>
                     <div>
-                        <div class="text-xs uppercase tracking-wide font-medium text-[var(--text)]" data-i18n="dashboard.location">Location</div>
-                        <div id="ctxLocation" class="font-mono text-[var(--text)]">--</div>
+                        <div class="metric-label" data-i18n="dashboard.location">Location</div>
+                        <div id="ctxLocation" class="font-mono text-xs text-[var(--text)]">--</div>
                     </div>
                     <div>
-                        <div class="text-xs uppercase tracking-wide font-medium text-[var(--text)]" data-i18n="dashboard.duration">Duration</div>
-                        <div id="sessionUptime" class="font-mono text-[var(--text)]">00:00</div>
+                        <div class="metric-label" data-i18n="dashboard.duration">Duration</div>
+                        <div id="sessionUptime" class="font-mono text-xs text-[var(--text)]">00:00</div>
                     </div>
                     <div>
-                        <div class="text-xs uppercase tracking-wide font-medium text-[var(--text)]" data-i18n="dashboard.monitoring">Monitoring</div>
+                        <div class="metric-label" data-i18n="dashboard.monitoring">Monitoring</div>
                         <div id="ctxMonitoring" class="inline-block mt-1 risk-pill risk-pill-low" data-i18n="dashboard.active">Active</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Access Decision Card -->
-            <div id="decisionCard" class="card p-4 lg:col-span-3">
-                <h3 class="font-semibold text-sm mb-4" data-i18n="dashboard.accessDecision">Access Decision</h3>
+            <div id="decisionCard" class="card tilt-3d p-4 lg:col-span-3">
+                <h3 class="section-title" data-i18n="dashboard.accessDecision">Access Decision</h3>
                 <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-4">
                     <div>
-                        <div class="text-xs text-[var(--text-secondary)] uppercase tracking-wide font-medium mb-1" data-i18n="dashboard.risk">Risk</div>
-                        <div id="riskScore" class="text-2xl font-bold text-[var(--text)]">0.0</div>
+                        <div class="metric-label" data-i18n="dashboard.risk">Risk</div>
+                        <div id="riskScore" class="metric-big">0.0</div>
                     </div>
                     <div>
-                        <div class="text-xs text-[var(--text-secondary)] uppercase tracking-wide font-medium mb-1" data-i18n="dashboard.trust">Trust</div>
-                        <div id="trustScore" class="text-2xl font-bold text-[var(--text)]">100</div>
+                        <div class="metric-label" data-i18n="dashboard.trust">Trust</div>
+                        <div id="trustScore" class="metric-big">100</div>
                     </div>
                     <div>
-                        <div class="text-xs text-[var(--text-secondary)] uppercase tracking-wide font-medium mb-1" data-i18n="dashboard.riskLevel">Risk Level</div>
-                        <div id="riskLevelBadge" class="inline-block badge badge-low">Unknown</div>
+                        <div class="metric-label" data-i18n="dashboard.riskLevel">Risk Level</div>
+                        <div id="riskLevelBadge" class="inline-block badge badge-low mt-1">Unknown</div>
                     </div>
                     <div>
-                        <div class="text-xs text-[var(--text-secondary)] uppercase tracking-wide font-medium mb-1" data-i18n="dashboard.decision">Decision</div>
-                        <div id="accessDecisionText" class="text-sm font-semibold text-[var(--text)]">Pending</div>
+                        <div class="metric-label" data-i18n="dashboard.decision">Decision</div>
+                        <div id="accessDecisionText" class="metric-value mt-1">Pending</div>
                     </div>
                     <div>
-                        <div class="text-xs text-[var(--text-secondary)] uppercase tracking-wide font-medium mb-1" data-i18n="dashboard.protection">Protection</div>
-                        <div id="dataStatusText" class="text-sm font-semibold text-[var(--text)]">Protected</div>
+                        <div class="metric-label" data-i18n="dashboard.protection">Protection</div>
+                        <div id="dataStatusText" class="metric-value mt-1">Protected</div>
                     </div>
                     <div>
-                        <div class="text-xs text-[var(--text-secondary)] uppercase tracking-wide font-medium mb-1" data-i18n="dashboard.threat">Threat</div>
-                        <div id="threatType" class="text-sm font-semibold text-[var(--text)]">Normal</div>
+                        <div class="metric-label" data-i18n="dashboard.threat">Threat</div>
+                        <div id="threatType" class="metric-value mt-1">Normal</div>
                     </div>
                 </div>
                 <div class="risk-bar">
@@ -339,104 +672,178 @@
         </div>
 
         <!-- Risk Breakdown & Timeline -->
-        <div class="grid lg:grid-cols-3 gap-4">
-            <div class="card p-4 lg:col-span-2">
-                <h3 class="font-semibold text-sm mb-4" data-i18n="dashboard.riskBreakdown">Risk Score Breakdown</h3>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4 text-sm">
-                    <div class="card p-2">
-                        <span class="text-[var(--text-secondary)]" data-i18n="dashboard.typing">Typing</span>: 
-                        <span id="scoreTyping" class="font-bold text-[var(--text)]">+0</span>
+        <div class="grid lg:grid-cols-3 gap-3">
+            <div class="card tilt-3d p-4 lg:col-span-2">
+                <h3 class="section-title" data-i18n="dashboard.riskBreakdown">Risk Score Breakdown</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+                    <div class="mini-stat">
+                        <div class="text-[var(--text-muted)] text-[10px] uppercase tracking-widest font-semibold" data-i18n="dashboard.typing">Typing</div>
+                        <div><span id="scoreTyping" class="font-bold text-[var(--text)] text-lg">+0</span></div>
                     </div>
-                    <div class="card p-2">
-                        <span class="text-[var(--text-secondary)]" data-i18n="dashboard.mouse">Mouse</span>: 
-                        <span id="scoreMouse" class="font-bold text-[var(--text)]">+0</span>
+                    <div class="mini-stat">
+                        <div class="text-[var(--text-muted)] text-[10px] uppercase tracking-widest font-semibold" data-i18n="dashboard.mouse">Mouse</div>
+                        <div><span id="scoreMouse" class="font-bold text-[var(--text)] text-lg">+0</span></div>
                     </div>
-                    <div class="card p-2">
-                        <span class="text-[var(--text-secondary)]" data-i18n="dashboard.ip">IP</span>: 
-                        <span id="scoreIp" class="font-bold text-[var(--text)]">+0</span>
+                    <div class="mini-stat">
+                        <div class="text-[var(--text-muted)] text-[10px] uppercase tracking-widest font-semibold" data-i18n="dashboard.ip">IP</div>
+                        <div><span id="scoreIp" class="font-bold text-[var(--text)] text-lg">+0</span></div>
                     </div>
-                    <div class="card p-2">
-                        <span class="text-[var(--text-secondary)]" data-i18n="dashboard.session">Session</span>: 
-                        <span id="scoreSession" class="font-bold text-[var(--text)]">+0</span>
+                    <div class="mini-stat">
+                        <div class="text-[var(--text-muted)] text-[10px] uppercase tracking-widest font-semibold" data-i18n="dashboard.session">Session</div>
+                        <div><span id="scoreSession" class="font-bold text-[var(--text)] text-lg">+0</span></div>
                     </div>
                 </div>
-                <div id="riskFactorsList" class="space-y-2 text-sm"></div>
+                <div id="riskFactorsList" class="space-y-2"></div>
             </div>
 
-            <div class="card p-4">
-                <h3 class="font-semibold text-sm mb-4" data-i18n="dashboard.behaviorTimeline">Timeline</h3>
-                <div id="timelineLog" class="space-y-2 text-xs font-mono text-[var(--text-secondary)] max-h-64 overflow-y-auto">
-                    <div data-i18n="dashboard.monitoring">Monitoring...</div>
+            <div class="card tilt-3d p-4">
+                <h3 class="section-title" data-i18n="dashboard.behaviorTimeline">Timeline</h3>
+                <div id="timelineLog" class="max-h-72 overflow-y-auto pr-1">
+                    <div class="timeline-row" data-i18n="dashboard.monitoring">Monitoring...</div>
                 </div>
             </div>
         </div>
 
         <!-- Sensitive Data & Protected Resource -->
-        <div class="grid lg:grid-cols-2 gap-4">
-            <div class="card p-4">
-                <h3 class="font-semibold text-sm mb-4" data-i18n="dashboard.sensitiveDataVault">Sensitive Data Vault</h3>
-                <div id="restrictedOverlay" class="hidden status-bar status-bar-error mb-4" style="border-left-width: 3px;">
-                    <div class="font-semibold text-sm" data-i18n="dashboard.denied">Access denied: critical risk.</div>
+        <div class="grid lg:grid-cols-2 gap-3">
+            <div class="card tilt-3d p-4">
+                <h3 class="section-title" data-i18n="dashboard.sensitiveDataVault">Sensitive Data Vault</h3>
+                <div id="restrictedOverlay" class="hidden status-bar status-bar-error mb-3">
+                    <div class="font-semibold text-xs" data-i18n="dashboard.denied">Access denied: critical risk.</div>
                 </div>
-                <div id="sensitiveDataContainer" class="space-y-3 text-sm">
+                <div id="sensitiveDataContainer" class="space-y-3">
                     <div>
-                        <div class="text-xs text-[var(--text-secondary)] uppercase tracking-wide font-medium mb-1" data-i18n="dashboard.userId">User ID</div>
-                        <div id="userIdDisplay" class="font-mono text-[var(--text)]">--</div>
+                        <div class="metric-label" data-i18n="dashboard.userId">User ID</div>
+                        <div id="userIdDisplay" class="font-mono text-sm text-[var(--text)]">--</div>
                     </div>
                     <div>
-                        <div class="text-xs text-[var(--text-secondary)] uppercase tracking-wide font-medium mb-1" data-i18n="dashboard.accountBalance">Account Balance</div>
-                        <div id="accountBalance" class="font-mono text-[var(--text)]">$145,250.00</div>
+                        <div class="metric-label" data-i18n="dashboard.accountBalance">Account Balance</div>
+                        <div id="accountBalance" class="font-mono text-sm text-[var(--text)]">$145,250.00</div>
                     </div>
                     <div>
-                        <div class="text-xs text-[var(--text-secondary)] uppercase tracking-wide font-medium mb-1" data-i18n="dashboard.lastLoginIp">Last Login IP</div>
-                        <div id="lastLoginIp" class="font-mono text-[var(--text)]">192.168.1.105</div>
+                        <div class="metric-label" data-i18n="dashboard.lastLoginIp">Last Login IP</div>
+                        <div id="lastLoginIp" class="font-mono text-sm text-[var(--text)]">192.168.1.105</div>
                     </div>
                 </div>
             </div>
 
-            <div class="card p-4">
-                <h3 class="font-semibold text-sm mb-4" data-i18n="dashboard.protectedResource">Protected Resource</h3>
+            <div class="card tilt-3d p-4">
+                <h3 class="section-title" data-i18n="dashboard.protectedResource">Protected Resource</h3>
                 <button id="resourceBtn" class="btn btn-primary w-full mb-3" data-i18n="dashboard.requestSensitiveData">Request Data</button>
-                <div id="resourceResult" class="text-sm text-[var(--text-secondary)]" data-i18n="dashboard.noRequest">No request yet.</div>
+                <div id="resourceResult" class="text-xs text-[var(--text-secondary)] font-mono p-3 rounded-md border border-[var(--border)] bg-[var(--surface-alt)]" data-i18n="dashboard.noRequest">No request yet.</div>
             </div>
         </div>
 
         <!-- Decision Explanation -->
-        <div class="grid lg:grid-cols-3 gap-4">
-            <div class="card p-4 lg:col-span-2">
-                <h3 class="font-semibold text-sm mb-4" data-i18n="dashboard.whyDecision">Why system made this decision</h3>
-                <ul id="explainList" class="space-y-2 text-sm">
-                    <li class="text-[var(--text-secondary)]" data-i18n="dashboard.normalBehavior">Behavior is consistent with baseline profile.</li>
+        <div class="grid lg:grid-cols-3 gap-3">
+            <div class="card tilt-3d p-4 lg:col-span-2">
+                <h3 class="section-title" data-i18n="dashboard.whyDecision">Why system made this decision</h3>
+                <ul id="explainList" class="space-y-2">
+                    <li class="text-[var(--text-secondary)] text-xs flex items-start gap-2" data-i18n="dashboard.normalBehavior">Behavior is consistent with baseline profile.</li>
                 </ul>
-                <div id="explainConclusion" class="mt-4 p-3 rounded-6px bg-blue-50 text-sm text-[var(--text)]"></div>
+                <div id="explainConclusion" class="mt-3 p-3 rounded-md bg-[var(--surface-alt)] border border-[var(--border)] text-xs text-[var(--text)]"></div>
             </div>
 
-            <div class="card p-4">
-                <h3 class="font-semibold text-sm mb-4" data-i18n="dashboard.systemFlow">System Flow</h3>
-                <div class="text-xs text-[var(--text-secondary)] leading-relaxed">User → Sensors → Behavior → Risk Engine → Access Control → Protected Resource</div>
+            <div class="card tilt-3d p-4">
+                <h3 class="section-title" data-i18n="dashboard.systemFlow">System Flow</h3>
+                <div class="text-[11px] text-[var(--text-secondary)] leading-relaxed font-mono">User → Sensors → Behavior → Risk Engine → Access Control → Protected Resource</div>
+            </div>
+        </div>
+
+        <!-- Behavioral Biometrics Engine -->
+        <div class="grid lg:grid-cols-3 gap-3">
+            <!-- Aggregate trust / threat -->
+            <div class="card tilt-3d p-4">
+                <div class="flex items-center justify-between mb-1">
+                    <h3 class="section-title m-0" data-i18n="bx.title">Behavioral Biometrics</h3>
+                    <span id="bxThreatBadge" class="badge badge-low">Low</span>
+                </div>
+                <div class="text-[10px] text-[var(--text-muted)] uppercase tracking-widest mb-3" data-i18n="bx.subtitle">Adaptive trust engine</div>
+                <div class="grid grid-cols-2 gap-3 mb-3">
+                    <div>
+                        <div class="metric-label" data-i18n="bx.trustScore">Trust</div>
+                        <div id="bxTrust" class="metric-big">100</div>
+                    </div>
+                    <div>
+                        <div class="metric-label" data-i18n="bx.riskScore">Risk</div>
+                        <div id="bxRisk" class="metric-big">0</div>
+                    </div>
+                </div>
+                <div class="risk-bar"><div id="bxRiskBar" class="risk-bar-fill" style="width: 0%"></div></div>
+                <div class="mt-3">
+                    <div class="metric-label" data-i18n="bx.decision">Decision</div>
+                    <div id="bxDecision" class="text-sm font-semibold text-[var(--text)] mt-0.5">Full access</div>
+                </div>
+            </div>
+
+            <!-- Per-module scores -->
+            <div class="card tilt-3d p-4 lg:col-span-2">
+                <h3 class="section-title" data-i18n="bx.threats">Threat Categories</h3>
+                <div id="bxModules" class="grid grid-cols-2 md:grid-cols-5 gap-2"></div>
+                <div class="mt-4 grid md:grid-cols-2 gap-3">
+                    <div>
+                        <div class="metric-label" data-i18n="bx.deviceFp">Device Fingerprint</div>
+                        <div id="bxDeviceFp" class="font-mono text-xs text-[var(--text)] break-all">--</div>
+                    </div>
+                    <div>
+                        <div class="metric-label" data-i18n="bx.geo">Geo Location</div>
+                        <div id="bxGeo" class="font-mono text-xs text-[var(--text)]">--</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Anomaly Feed -->
+        <div class="card p-4">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="section-title m-0" data-i18n="bx.feed">Live Anomaly Feed</h3>
+                <span id="bxFeedCount" class="badge badge-neutral">0</span>
+            </div>
+            <div id="bxFeed" class="max-h-72 overflow-y-auto space-y-1.5 pr-1">
+                <div class="text-xs text-[var(--text-muted)] py-2" data-i18n="bx.noEvents">No anomalies detected</div>
             </div>
         </div>
 
         <!-- Demo Scenarios -->
         <div class="card p-4">
-            <h3 class="font-semibold text-sm mb-4" data-i18n="dashboard.demoScenario">Demo Scenario Control Panel</h3>
+            <h3 class="section-title" data-i18n="dashboard.demoScenario">Demo Scenario Control Panel</h3>
             <div class="flex flex-wrap gap-2">
                 <button class="scenarioBtn btn btn-secondary" data-scenario="normal" data-i18n="dashboard.normalScenario">Normal</button>
                 <button class="scenarioBtn btn btn-secondary" data-scenario="suspicious" data-i18n="dashboard.suspiciousScenario">Suspicious</button>
                 <button class="scenarioBtn btn btn-secondary" data-scenario="high-risk" data-i18n="dashboard.highRiskScenario">High-Risk</button>
                 <button id="resetBaselineBtn" class="btn btn-secondary" data-i18n="dashboard.resetBaseline">Reset Baseline</button>
-                <button id="unlockSessionBtn" class="btn btn-secondary" style="background-color: #F59E0B; color: white;">Unlock Session</button>
+                <button id="unlockSessionBtn" class="btn btn-warning">Unlock Session</button>
                 <button id="verifyBtn" class="hidden btn btn-primary" data-i18n="dashboard.verify">Verify</button>
+            </div>
+        </div>
+
+        <!-- Behavioral Engine Test Panel — triggers each detection module for demo -->
+        <div class="card p-4">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="section-title m-0">Behavioral Engine Test Panel</h3>
+                <span class="text-[10px] uppercase tracking-widest text-[var(--text-muted)]">trigger detection modules</span>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button class="bxSimBtn btn btn-secondary" data-bxsim="typing">Trigger Typing Anomaly</button>
+                <button class="bxSimBtn btn btn-secondary" data-bxsim="mouse">Trigger Robotic Mouse</button>
+                <button class="bxSimBtn btn btn-secondary" data-bxsim="click">Trigger Click Automation</button>
+                <button class="bxSimBtn btn btn-secondary" data-bxsim="paste">Trigger Password Paste</button>
+                <button class="bxSimBtn btn btn-secondary" data-bxsim="focus">Trigger Tab Switching</button>
+                <button class="bxSimBtn btn btn-secondary" data-bxsim="session">Trigger Session Anomaly</button>
+                <button class="bxSimBtn btn btn-secondary" data-bxsim="device">Trigger Device Change</button>
+                <button class="bxSimBtn btn btn-secondary" data-bxsim="navigation">Trigger Nav Anomaly</button>
+                <button class="bxSimBtn btn btn-secondary" data-bxsim="abuse">Trigger Resource Abuse</button>
+                <button class="bxSimBtn btn btn-danger" data-bxsim="travel">Trigger Impossible Travel</button>
             </div>
         </div>
     </main>
 
     <!-- Step-up Authentication Modal -->
-    <div id="otpModal" class="hidden fixed inset-0 bg-black/40 z-40 flex items-center justify-center p-4">
+    <div id="otpModal" class="hidden modal-backdrop">
         <div class="card p-6 w-full max-w-sm">
-            <h3 class="font-semibold text-lg mb-2" data-i18n="stepup.title">Step-up Authentication</h3>
-            <p class="text-sm text-[var(--text-secondary)] mb-4" data-i18n="stepup.subtitle">Enter OTP code:</p>
-            <input id="otpInput" class="w-full border border-[var(--border)] rounded-6px px-3 py-2 mb-4 text-sm" data-i18n-placeholder="stepup.otpPlaceholder" placeholder="OTP">
+            <h3 class="font-bold text-lg mb-1 text-[var(--text)]" data-i18n="stepup.title">Step-up Authentication</h3>
+            <p class="text-xs text-[var(--text-secondary)] mb-4" data-i18n="stepup.subtitle">Enter OTP code:</p>
+            <input id="otpInput" class="w-full border border-[var(--border)] rounded-lg px-3 py-2 mb-4 text-sm font-mono bg-[var(--surface-alt)] text-[var(--text)] focus:outline-none focus:border-[var(--accent-red)]" data-i18n-placeholder="stepup.otpPlaceholder" placeholder="OTP">
             <div class="flex justify-end gap-2">
                 <button onclick="closeOtpModal()" class="btn btn-secondary" data-i18n="stepup.cancel">Cancel</button>
                 <button id="otpSubmitBtn" class="btn btn-primary" data-i18n="stepup.verify">Verify</button>
@@ -444,9 +851,12 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script src="/static/three-bg.js"></script>
+    <script src="/static/tilt.js"></script>
     <script src="/static/sensor.js"></script>
+    <script src="/static/behavior-engine.js"></script>
     <script>
-        // Initialize i18n
         function initLanguage() {
             const lang = getLanguage();
             updateLanguageButton(lang);
@@ -458,7 +868,6 @@
                 const key = el.dataset.i18n;
                 el.textContent = t(key, lang);
             });
-
             document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
                 const key = el.dataset.i18nPlaceholder;
                 el.placeholder = t(key, lang);
@@ -474,13 +883,6 @@
         function updateLanguageButton(lang) {
             document.querySelectorAll('.language-switch button').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.lang === lang);
-                if (btn.dataset.lang === lang) {
-                    btn.style.backgroundColor = 'var(--primary)';
-                    btn.style.color = 'white';
-                } else {
-                    btn.style.backgroundColor = 'transparent';
-                    btn.style.color = 'var(--text-secondary)';
-                }
             });
         }
 
@@ -507,39 +909,40 @@
         let criticalModeActive = false;
 
         function logSecurityEvent(action, message, riskScore = 0) {
+            // Always returns a Promise that resolves (never rejects) so the
+            // caller can safely chain `.finally(...)` to trigger logout even
+            // if the beacon/fetch fails or the page is unloading.
             const payload = JSON.stringify({ action, message, risk_score: riskScore });
             try {
                 if (navigator.sendBeacon) {
                     const sent = navigator.sendBeacon('/api/security-event', new Blob([payload], { type: 'application/json' }));
-                    if (sent) return;
+                    if (sent) return Promise.resolve({ via: 'beacon' });
                 }
                 const headers = { 'Content-Type': 'application/json' };
                 if (token) headers.Authorization = `Bearer ${token}`;
-                fetch('/api/security-event', {
-                    method: 'POST',
-                    headers,
-                    body: payload,
-                    keepalive: true
+                return fetch('/api/security-event', {
+                    method: 'POST', headers, body: payload, keepalive: true
+                }).catch((err) => {
+                    console.warn('Failed to log security event:', err);
+                    return null;
                 });
             } catch (error) {
                 console.warn('Failed to log security event:', error);
+                return Promise.resolve(null);
             }
         }
 
         function api(path, method='GET', body=null) {
             const headers = { 'Content-Type': 'application/json' };
             if (token) headers.Authorization = `Bearer ${token}`;
-            return fetch(path, {
-                method,
-                headers,
-                body: body ? JSON.stringify(body) : null
-            });
+            return fetch(path, { method, headers, body: body ? JSON.stringify(body) : null });
         }
 
         function logEvent(message) {
-            const t = new Date().toLocaleTimeString();
+            const tNow = new Date().toLocaleTimeString();
             const row = document.createElement('div');
-            row.textContent = `[${t}] ${message}`;
+            row.className = 'timeline-row';
+            row.textContent = `[${tNow}] ${message}`;
             const wrap = document.getElementById('timelineLog');
             wrap.prepend(row);
             if (wrap.children.length > 25) wrap.removeChild(wrap.lastChild);
@@ -567,7 +970,9 @@
             const banner = document.getElementById('criticalBanner');
             banner.classList.remove('hidden');
             document.getElementById('criticalCountdown').textContent = killSwitchSeconds;
-            
+            document.getElementById('decisionCard').classList.add('is-critical');
+            if (window.setThreeCritical) window.setThreeCritical(true);
+
             if (!criticalEventLogged) {
                 criticalEventLogged = true;
                 logSecurityEvent('critical_session_triggered', 'Possible session hijacking detected. Countdown started.', risk);
@@ -575,61 +980,115 @@
 
             killSwitchTimer = setInterval(() => {
                 killSwitchSeconds -= 1;
-                document.getElementById('criticalCountdown').textContent = killSwitchSeconds;
+                // Don't render negative numbers — clamp to 0 in the UI.
+                const display = Math.max(0, killSwitchSeconds);
+                document.getElementById('criticalCountdown').textContent = display;
                 if (killSwitchSeconds <= 0) {
                     clearInterval(killSwitchTimer);
-                    logSecurityEvent('critical_session_terminated', 'Critical risk exceeded. Session terminated automatically.', risk).finally(() => {
-                        logout();
-                    });
+                    killSwitchTimer = null;
+                    // Hard guarantee: even if the security-event POST hangs
+                    // or throws synchronously, logout fires within ~800ms.
+                    let loggedOut = false;
+                    const doLogout = () => {
+                        if (loggedOut) return;
+                        loggedOut = true;
+                        try { logout(); } catch (e) {
+                            // Absolute last resort — wipe creds and reload
+                            console.error('logout() threw:', e);
+                            try {
+                                localStorage.removeItem('access_token');
+                                localStorage.removeItem('user_id');
+                                localStorage.removeItem('username');
+                                localStorage.removeItem('role');
+                            } catch (_) { /* noop */ }
+                            window.location.href = '/login';
+                        }
+                    };
+                    try {
+                        const p = logSecurityEvent(
+                            'critical_session_terminated',
+                            'Critical risk exceeded. Session terminated automatically.',
+                            risk
+                        );
+                        if (p && typeof p.then === 'function') {
+                            p.finally(doLogout);
+                        } else {
+                            doLogout();
+                        }
+                    } catch (e) {
+                        console.error('Failed to log critical termination:', e);
+                        doLogout();
+                    }
+                    // Safety net — guaranteed logout after 800 ms regardless of
+                    // promise resolution / network state.
+                    setTimeout(doLogout, 800);
                 }
             }, 1000);
         }
 
-        function closeOtpModal() {
-            document.getElementById('otpModal').classList.add('hidden');
-        }
+        function closeOtpModal() { document.getElementById('otpModal').classList.add('hidden'); }
         window.closeOtpModal = closeOtpModal;
 
-        // Decision Logic
+        // Animated count-up
+        function animateNumber(el, target, decimals = 1, duration = 600) {
+            const startVal = parseFloat(el.textContent) || 0;
+            const startTime = performance.now();
+            function step(now) {
+                const p = Math.min(1, (now - startTime) / duration);
+                const ease = 1 - Math.pow(1 - p, 3);
+                const val = startVal + (target - startVal) * ease;
+                el.textContent = decimals === 0 ? Math.round(val) : val.toFixed(decimals);
+                if (p < 1) requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
+        }
+
         async function applyDecision(raw) {
             const risk = Number(raw.risk_score || 0);
             const trust = Number(raw.trust_score ?? Math.max(0, 100 - risk));
             const reasons = raw.reasons || ['No anomalies detected'];
             const breakdown = raw.score_breakdown || {};
 
-            // Determine risk level
             let riskLevel = t('risk.low', getLanguage());
             let riskBadgeClass = 'badge-low';
-            if (risk >= 80) {
-                riskLevel = t('risk.critical', getLanguage());
-                riskBadgeClass = 'badge-critical';
-            } else if (risk >= 60) {
-                riskLevel = t('risk.high', getLanguage());
-                riskBadgeClass = 'badge-high';
-            } else if (risk >= 40) {
-                riskLevel = t('risk.medium', getLanguage());
-                riskBadgeClass = 'badge-medium';
-            }
+            let metricCls = '';
+            if (risk >= 80) { riskLevel = t('risk.critical', getLanguage()); riskBadgeClass = 'badge-critical'; metricCls = 'is-critical'; }
+            else if (risk >= 60) { riskLevel = t('risk.high', getLanguage()); riskBadgeClass = 'badge-high'; metricCls = 'is-critical'; }
+            else if (risk >= 40) { riskLevel = t('risk.medium', getLanguage()); riskBadgeClass = 'badge-medium'; metricCls = 'is-warning'; }
 
-            // Update display
-            document.getElementById('riskScore').textContent = risk.toFixed(1);
-            document.getElementById('trustScore').textContent = `${trust.toFixed(1)} ${risk > 50 ? '↓' : '↑'}`;
-            document.getElementById('riskLevelBadge').className = `inline-block badge ${riskBadgeClass}`;
-            document.getElementById('riskLevelBadge').textContent = riskLevel;
-            document.getElementById('accessDecisionText').textContent = raw.access_decision || raw.message || t('general.loading', getLanguage());
-            document.getElementById('dataStatusText').textContent = raw.data_protection || t('dashboard.protected', getLanguage());
-            document.getElementById('threatType').textContent = raw.threat_type || t('threat.normal', getLanguage());
-            document.getElementById('riskBar').style.width = `${Math.min(100, risk)}%`;
+            const riskEl = document.getElementById('riskScore');
+            const trustEl = document.getElementById('trustScore');
+            riskEl.className = `metric-big ${metricCls}`;
+            animateNumber(riskEl, risk, 1);
+            trustEl.textContent = `${trust.toFixed(1)} ${risk > 50 ? '↓' : '↑'}`;
+            const _levelBadge = document.getElementById('riskLevelBadge');
+            _levelBadge.className = `inline-block badge ${riskBadgeClass} mt-1`;
+            _levelBadge.textContent = riskLevel;
+            const _decisionEl = document.getElementById('accessDecisionText');
+            _decisionEl.textContent = raw.access_decision || raw.message || t('general.loading', getLanguage());
+            const _dataStatusEl = document.getElementById('dataStatusText');
+            _dataStatusEl.textContent = raw.data_protection || t('dashboard.protected', getLanguage());
+            const _threatEl = document.getElementById('threatType');
+            _threatEl.textContent = raw.threat_type || t('threat.normal', getLanguage());
+            const _riskBar = document.getElementById('riskBar');
+            _riskBar.style.width = `${Math.min(100, risk)}%`;
 
-            // Status alert
+            // Mark every Access-Decision cell as backend-driven so the local
+            // BehaviorEngine mirror in bxUpdate() doesn't overwrite real data.
+            riskEl.dataset.fromBackend = '1';
+            trustEl.dataset.fromBackend = '1';
+            _levelBadge.dataset.fromBackend = '1';
+            _decisionEl.dataset.fromBackend = '1';
+            _dataStatusEl.dataset.fromBackend = '1';
+            _threatEl.dataset.fromBackend = '1';
+            _riskBar.dataset.fromBackend = '1';
+
             const statusAlert = document.getElementById('statusAlert');
             if (risk >= 80 || raw.kill_switch) {
                 statusAlert.className = 'status-bar status-bar-error';
                 statusAlert.textContent = raw.final_access_decision || t('access.sessionLocked', getLanguage());
                 statusAlert.classList.remove('hidden');
-                if (!criticalModeActive) {
-                    startKillSwitch(risk);
-                }
+                if (!criticalModeActive) startKillSwitch(risk);
             } else if (risk > 50) {
                 statusAlert.className = 'status-bar status-bar-warning';
                 statusAlert.textContent = raw.requires_mfa ? t('access.stepUpRequired', getLanguage()) : t('dashboard.suspiciousActivity', getLanguage());
@@ -640,37 +1099,61 @@
                 criticalEventLogged = false;
                 criticalModeActive = false;
                 document.getElementById('criticalBanner').classList.add('hidden');
+                document.getElementById('decisionCard').classList.remove('is-critical');
+                if (window.setThreeCritical) window.setThreeCritical(false);
             }
 
-            // Score breakdown
-            document.getElementById('scoreTyping').textContent = `+${breakdown["Typing Anomaly"] || 0}`;
-            document.getElementById('scoreMouse').textContent = `+${breakdown["Mouse Anomaly"] || 0}`;
-            document.getElementById('scoreIp').textContent = `+${breakdown["IP Change"] || 0}`;
-            document.getElementById('scoreSession').textContent = `+${breakdown["Session Anomaly"] || 0}`;
+            // Score breakdown — mark cells as backend-driven so the local
+            // BehaviorEngine mirror in bxUpdate() doesn't overwrite them.
+            const hasBackendBreakdown = breakdown && (
+                breakdown["Typing Anomaly"] !== undefined ||
+                breakdown["Mouse Anomaly"] !== undefined ||
+                breakdown["IP Change"] !== undefined ||
+                breakdown["Session Anomaly"] !== undefined
+            );
+            const _scoreTyping = document.getElementById('scoreTyping');
+            const _scoreMouse = document.getElementById('scoreMouse');
+            const _scoreIp = document.getElementById('scoreIp');
+            const _scoreSession = document.getElementById('scoreSession');
+            _scoreTyping.textContent = `+${breakdown["Typing Anomaly"] || 0}`;
+            _scoreMouse.textContent = `+${breakdown["Mouse Anomaly"] || 0}`;
+            _scoreIp.textContent = `+${breakdown["IP Change"] || 0}`;
+            _scoreSession.textContent = `+${breakdown["Session Anomaly"] || 0}`;
+            if (hasBackendBreakdown) {
+                // Only freeze cells where the backend actually contributed a
+                // non-zero score; otherwise let the local BehaviorEngine keep
+                // painting live values (e.g. mouse engagement) instead of
+                // sticking at +0 for the rest of the session.
+                if ((breakdown["Typing Anomaly"] || 0) > 0) _scoreTyping.dataset.fromBackend = '1';
+                else delete _scoreTyping.dataset.fromBackend;
+                if ((breakdown["Mouse Anomaly"] || 0) > 0) _scoreMouse.dataset.fromBackend = '1';
+                else delete _scoreMouse.dataset.fromBackend;
+                if ((breakdown["IP Change"] || 0) > 0) _scoreIp.dataset.fromBackend = '1';
+                else delete _scoreIp.dataset.fromBackend;
+                if ((breakdown["Session Anomaly"] || 0) > 0) _scoreSession.dataset.fromBackend = '1';
+                else delete _scoreSession.dataset.fromBackend;
+            }
 
-            // Risk factors
             const factors = document.getElementById('riskFactorsList');
             factors.innerHTML = '';
             reasons.forEach((r) => {
                 const div = document.createElement('div');
-                div.className = 'p-2 rounded-6px bg-[var(--border)] text-sm text-[var(--text-secondary)]';
+                div.className = 'factor-item';
                 div.textContent = r;
                 factors.appendChild(div);
             });
 
-            // Explanation
             const explain = raw.explainability || { highlights: reasons, conclusion: '' };
             const explainList = document.getElementById('explainList');
             explainList.innerHTML = '';
             (explain.highlights || []).forEach((h) => {
                 const li = document.createElement('li');
-                li.className = 'text-[var(--text)]';
-                li.textContent = h;
+                li.className = 'text-[var(--text)] text-xs flex items-start gap-2';
+                li.innerHTML = `<span class="inline-block w-1 h-1 rounded-full bg-[var(--accent-red)] mt-1.5 flex-shrink-0" style="box-shadow:0 0 6px var(--accent-red);"></span><span>${h}</span>`;
                 explainList.appendChild(li);
             });
             document.getElementById('explainConclusion').textContent = explain.conclusion || '';
 
-            // Data protection
             const verifyBtn = document.getElementById('verifyBtn');
             const overlay = document.getElementById('restrictedOverlay');
             const sensitive = document.getElementById('sensitiveDataContainer');
@@ -702,7 +1185,6 @@
             logEvent(`${t('dashboard.decision', getLanguage())}: ${raw.access_decision || raw.message}`);
         }
 
-        // Event Listeners
         document.getElementById('verifyBtn').addEventListener('click', () => {
             document.getElementById('otpModal').classList.remove('hidden');
         });
@@ -749,11 +1231,7 @@
             const res = await api('/api/protected-resource');
             const out = document.getElementById('resourceResult');
             let payload = {};
-            try {
-                payload = await res.json();
-            } catch (error) {
-                payload = {};
-            }
+            try { payload = await res.json(); } catch (error) { payload = {}; }
             if (res.status === 200) {
                 out.textContent = `200 OK: ${payload.final_access_decision || payload.decision || 'resource granted'}`;
                 logEvent(t('access.fullAccess', getLanguage()));
@@ -775,8 +1253,16 @@
         async function loadSessionContext() {
             const loginTime = localStorage.getItem('loginTime') || Date.now().toString();
             const res = await fetch('/api/session-context', { headers: { 'Authorization': `Bearer ${token}`, 'x-login-time': loginTime } });
-            if (res.status === 401 || res.status === 423) {
-                logout();
+            // Only 401 means the token is dead — 423 means "locked by risk
+            // engine", session is still valid and user can reset baseline.
+            if (res.status === 401) { logout(); return; }
+            if (res.status === 423) {
+                const statusAlert = document.getElementById('statusAlert');
+                if (statusAlert) {
+                    statusAlert.className = 'status-bar status-bar-error';
+                    statusAlert.textContent = t('access.sessionLocked', getLanguage());
+                    statusAlert.classList.remove('hidden');
+                }
                 return;
             }
             if (!res.ok) return;
@@ -795,12 +1281,234 @@
             document.getElementById('sessionUptime').textContent = `${m}:${s}`;
         }, 1000);
 
-        // Listen for language change
-        window.addEventListener('languageChanged', (e) => {
-            updatePageText(e.detail.language);
+        window.addEventListener('languageChanged', (e) => { updatePageText(e.detail.language); });
+
+        // ============================================================
+        // Behavioral Biometrics Engine — UI binding
+        // ============================================================
+        const BX_MODULES = ['typing', 'mouse', 'click', 'paste', 'focus', 'session', 'device', 'navigation', 'abuse', 'travel'];
+        const BX_SEVERITY_TO_BADGE = { info: 'badge-neutral', low: 'badge-low', medium: 'badge-medium', high: 'badge-high', critical: 'badge-critical' };
+
+        function bxModuleClass(score) {
+            if (score >= 60) return 'badge-critical';
+            if (score >= 35) return 'badge-high';
+            if (score >= 15) return 'badge-medium';
+            return 'badge-low';
+        }
+
+        function bxRenderModules(scores) {
+            const wrap = document.getElementById('bxModules');
+            if (!wrap) return;
+            const lang = getLanguage();
+            wrap.innerHTML = '';
+            BX_MODULES.forEach(name => {
+                const score = Math.round(scores[name] || 0);
+                const el = document.createElement('div');
+                el.className = 'mini-stat flex items-center justify-between';
+                el.innerHTML = `
+                    <div class="text-[var(--text-muted)] text-[9.5px] uppercase tracking-widest font-semibold">${t('bx.module.' + name, lang)}</div>
+                    <span class="badge ${bxModuleClass(score)}">${score}</span>
+                `;
+                wrap.appendChild(el);
+            });
+        }
+
+        function bxThreatBadgeClass(level) {
+            return level === 'Critical' ? 'badge-critical'
+                : level === 'High' ? 'badge-high'
+                : level === 'Medium' ? 'badge-medium'
+                : 'badge-low';
+        }
+
+        function bxUpdate(state) {
+            document.getElementById('bxTrust').textContent = Math.round(state.trustScore);
+            document.getElementById('bxRisk').textContent = Math.round(state.riskScore);
+            document.getElementById('bxRiskBar').style.width = Math.min(100, state.riskScore) + '%';
+
+            const badge = document.getElementById('bxThreatBadge');
+            badge.className = 'badge ' + bxThreatBadgeClass(state.threatLevel);
+            badge.textContent = state.threatLevel;
+
+            document.getElementById('bxDecision').textContent = state.accessDecision;
+            bxRenderModules(state.scores);
+
+            if (state.deviceFp) {
+                document.getElementById('bxDeviceFp').textContent =
+                    state.deviceFp.hash + '  ·  ' + (state.deviceFp.platform || 'unknown') + '  ·  ' + (state.deviceFp.timezone || '');
+            }
+
+            // Mirror local engine module scores into the legacy
+            // "Risk Score Breakdown" card so it stays alive even when the
+            // backend /api/analyze-behavior endpoint is paused / locked.
+            const fmt = (n) => '+' + Math.round(Number(n) || 0);
+            const elT = document.getElementById('scoreTyping');
+            const elM = document.getElementById('scoreMouse');
+            const elI = document.getElementById('scoreIp');
+            const elS = document.getElementById('scoreSession');
+            if (elT && elT.dataset.fromBackend !== '1') elT.textContent = fmt(state.scores.typing);
+            if (elM && elM.dataset.fromBackend !== '1') elM.textContent = fmt(state.scores.mouse);
+            if (elI && elI.dataset.fromBackend !== '1') elI.textContent = fmt(state.scores.device);
+            if (elS && elS.dataset.fromBackend !== '1') elS.textContent = fmt(state.scores.session);
+
+            // Mirror engine state into the top-level "Access Decision" card so
+            // it shows live numbers immediately on user interaction instead of
+            // waiting for the 10s backend POST. Backend response (when it
+            // arrives via applyDecision) still wins — see data-from-backend.
+            const lang = getLanguage();
+            const r = Math.round(state.riskScore);
+            const tr = Math.round(state.trustScore);
+            const riskEl = document.getElementById('riskScore');
+            const trustEl = document.getElementById('trustScore');
+            const riskBar = document.getElementById('riskBar');
+            const levelBadge = document.getElementById('riskLevelBadge');
+            const decisionEl = document.getElementById('accessDecisionText');
+            const threatEl = document.getElementById('threatType');
+            const decisionCard = document.getElementById('decisionCard');
+
+            if (riskEl && riskEl.dataset.fromBackend !== '1') {
+                riskEl.textContent = Number(state.riskScore || 0).toFixed(1);
+                riskEl.className = 'metric-big' + (r >= 80 ? ' is-critical' : r >= 60 ? ' is-critical' : r >= 40 ? ' is-warning' : '');
+            }
+            if (trustEl && trustEl.dataset.fromBackend !== '1') {
+                trustEl.textContent = `${tr} ${state.riskScore > 50 ? '↓' : '↑'}`;
+            }
+            if (riskBar && riskBar.dataset.fromBackend !== '1') {
+                riskBar.style.width = Math.min(100, state.riskScore) + '%';
+            }
+            if (levelBadge && levelBadge.dataset.fromBackend !== '1') {
+                const cls = state.threatLevel === 'Critical' ? 'badge-critical'
+                    : state.threatLevel === 'High' ? 'badge-high'
+                    : state.threatLevel === 'Medium' ? 'badge-medium'
+                    : 'badge-low';
+                levelBadge.className = 'inline-block badge ' + cls;
+                const key = 'risk.' + state.threatLevel.toLowerCase();
+                levelBadge.textContent = t(key, lang) || state.threatLevel;
+            }
+            if (decisionEl && decisionEl.dataset.fromBackend !== '1') {
+                decisionEl.textContent = state.accessDecision;
+            }
+            if (threatEl && threatEl.dataset.fromBackend !== '1') {
+                // Best-effort live threat label from the topmost active module
+                const top = Object.entries(state.scores || {})
+                    .sort((a, b) => b[1] - a[1])[0];
+                if (top && top[1] >= 25) {
+                    threatEl.textContent = t('bx.cat.' + (
+                        top[0] === 'typing' ? 'typing_anomaly' :
+                        top[0] === 'mouse' ? 'robotic_mouse' :
+                        top[0] === 'click' ? 'click_automation' :
+                        top[0] === 'paste' ? 'paste_detected' :
+                        top[0] === 'focus' ? 'tab_switching' :
+                        top[0] === 'session' ? 'session_anomaly' :
+                        top[0] === 'device' ? 'device_change' :
+                        top[0] === 'navigation' ? 'navigation_anomaly' :
+                        top[0] === 'abuse' ? 'resource_abuse' :
+                        'impossible_travel'
+                    ), lang) || 'Anomaly';
+                } else {
+                    threatEl.textContent = t('threat.normal', lang) || 'Normal';
+                }
+            }
+            // Critical glow on the decision card mirrors threat level
+            if (decisionCard) {
+                if (state.threatLevel === 'Critical') decisionCard.classList.add('is-critical');
+                else decisionCard.classList.remove('is-critical');
+            }
+        }
+
+        function bxAppendFeed(anomaly) {
+            const wrap = document.getElementById('bxFeed');
+            if (!wrap) return;
+            // Clear placeholder
+            const placeholder = wrap.querySelector('[data-i18n="bx.noEvents"]');
+            if (placeholder) placeholder.remove();
+
+            const lang = getLanguage();
+            const row = document.createElement('div');
+            row.className = 'p-2.5 rounded-lg border flex items-start gap-3 fade-up';
+            const sev = anomaly.severity || 'low';
+            const badgeCls = BX_SEVERITY_TO_BADGE[sev] || 'badge-neutral';
+            const catLabel = t('bx.cat.' + anomaly.category, lang) || anomaly.category;
+            row.style.borderColor = 'var(--border)';
+            row.style.background = 'var(--surface-alt)';
+            row.innerHTML = `
+                <span class="badge ${badgeCls} flex-shrink-0">${catLabel}</span>
+                <div class="flex-1 min-w-0">
+                    <div class="text-xs text-[var(--text)]">${anomaly.message}</div>
+                    <div class="text-[10px] text-[var(--text-muted)] font-mono mt-0.5">${new Date(anomaly.ts).toLocaleTimeString()} · +${anomaly.risk}</div>
+                </div>
+            `;
+            wrap.prepend(row);
+            while (wrap.children.length > 50) wrap.removeChild(wrap.lastChild);
+            const countEl = document.getElementById('bxFeedCount');
+            countEl.textContent = wrap.children.length;
+            countEl.className = 'badge ' + (anomaly.severity === 'critical' ? 'badge-critical' : 'badge-neutral');
+
+            // Also append to existing timeline
+            logEvent('[' + catLabel + '] ' + anomaly.message);
+        }
+
+        if (window.BehaviorEngine) {
+            window.BehaviorEngine.init({
+                userId: userId,
+                role: role,
+                page: 'dashboard',
+                autoLog: true,
+            });
+            // Initial paint
+            bxUpdate(window.BehaviorEngine.getState());
+
+            // Geo mock
+            const geo = window.BehaviorEngine.checkTravel();
+            if (geo) document.getElementById('bxGeo').textContent = geo.country + ' (' + geo.code + ')';
+
+            // Live updates
+            window.addEventListener('behaviorStateChange', (e) => bxUpdate(e.detail));
+            window.addEventListener('behaviorAnomaly', (e) => bxAppendFeed(e.detail));
+        }
+
+        // Hook protected resource clicks into abuse detector
+        const _origResourceClick = document.getElementById('resourceBtn');
+        if (_origResourceClick && window.BehaviorEngine) {
+            _origResourceClick.addEventListener('click', () => {
+                window.BehaviorEngine.recordResourceAccess('protected-resource');
+            });
+        }
+
+        // Behavioral Engine Test Panel — wires each `Trigger ...` button to
+        // BehaviorEngine.simulate() so the diploma demo can show every
+        // detection module firing on demand.
+        document.querySelectorAll('.bxSimBtn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const cat = btn.dataset.bxsim;
+                if (window.BehaviorEngine && typeof window.BehaviorEngine.simulate === 'function') {
+                    window.BehaviorEngine.simulate(cat);
+                    bxUpdate(window.BehaviorEngine.getState());
+                }
+            });
         });
 
-        // Initialize
+        // Reset baseline button also resets engine
+        const _origReset = document.getElementById('resetBaselineBtn');
+        if (_origReset && window.BehaviorEngine) {
+            _origReset.addEventListener('click', () => {
+                window.BehaviorEngine.resetBaseline();
+                // Clear "backend wins" flags so the engine can paint the
+                // legacy breakdown + access-decision cards again after reset.
+                ['scoreTyping','scoreMouse','scoreIp','scoreSession',
+                 'riskScore','trustScore','riskLevelBadge','accessDecisionText',
+                 'dataStatusText','threatType','riskBar'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) delete el.dataset.fromBackend;
+                });
+                bxUpdate(window.BehaviorEngine.getState());
+                const wrap = document.getElementById('bxFeed');
+                if (wrap) {
+                    wrap.innerHTML = `<div class="text-xs text-[var(--text-muted)] py-2" data-i18n="bx.noEvents">${t('bx.noEvents', getLanguage())}</div>`;
+                }
+                document.getElementById('bxFeedCount').textContent = '0';
+            });
+        }
+
         initLanguage();
         logEvent(t('event.login', getLanguage()));
         loadSessionContext();

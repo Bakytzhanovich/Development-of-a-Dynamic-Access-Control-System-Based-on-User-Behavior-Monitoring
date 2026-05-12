@@ -192,15 +192,51 @@
                 body: JSON.stringify(dataToSend)
             });
 
-            // Stop noisy retry loop if token is expired, invalid, or the account is locked.
-            if (response.status === 401 || response.status === 423) {
-                console.warn('Session token is invalid, expired, or locked. Redirecting to login.');
+            // 401 — token is genuinely invalid: clear session and redirect.
+            if (response.status === 401) {
+                console.warn('Session token invalid. Redirecting to login.');
                 cleanup();
                 localStorage.removeItem('access_token');
                 localStorage.removeItem('user_id');
                 localStorage.removeItem('username');
                 localStorage.removeItem('role');
                 window.location.href = '/login';
+                return;
+            }
+
+            // 423 — session is LOCKED by risk engine, not invalid. Previously
+            // we redirected to /login, which caused a relogin loop (login →
+            // locked → logout → login → …). Don't redirect; keep the session.
+            //
+            // IMPORTANT: 423 responses still carry the full analysis payload
+            // (status, risk_score, score_breakdown, reasons, …) — feed it to
+            // the UI exactly like a 200 so the breakdown / risk cards update
+            // instead of staying at +0. Then pause further polling.
+            if (response.status === 423) {
+                console.warn('Session locked by risk engine. Behavior sensor paused.');
+                let lockedResult = null;
+                try { lockedResult = await response.clone().json(); } catch (e) { lockedResult = null; }
+                if (lockedResult) {
+                    try {
+                        window.dispatchEvent(new CustomEvent('behaviorAnalyzed', {
+                            detail: {
+                                riskScore: lockedResult.risk_score || 0,
+                                status: lockedResult.status || 'locked',
+                                message: lockedResult.message,
+                                requiresMfa: !!lockedResult.requires_mfa,
+                                rawData: lockedResult,
+                            }
+                        }));
+                    } catch (e) { /* noop */ }
+                }
+                keystrokes = [];
+                mouseMovements = [];
+                if (sendInterval) { clearInterval(sendInterval); sendInterval = null; }
+                try {
+                    window.dispatchEvent(new CustomEvent('sensorPaused', {
+                        detail: { reason: 'session_locked', status: 423, payload: lockedResult }
+                    }));
+                } catch (e) { /* noop */ }
                 return;
             }
             

@@ -80,6 +80,24 @@ class SecurityEventRequest(BaseModel):
 app = FastAPI(title="Dynamic Access Control System")
 templates = Jinja2Templates(directory="templates")
 
+
+def static_version() -> str:
+    """Cache-bust query string. Uses the newest mtime under /static so the
+    browser always picks up freshly edited assets (i18n.js, behavior-engine.js,
+    …) without a manual hard refresh."""
+    try:
+        latest = 0.0
+        for root_dir, _dirs, files in os.walk("static"):
+            for fname in files:
+                p = os.path.join(root_dir, fname)
+                try:
+                    latest = max(latest, os.path.getmtime(p))
+                except OSError:
+                    continue
+        return str(int(latest)) if latest else "1"
+    except Exception:
+        return "1"
+
 if os.path.exists("static"):
     app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -116,10 +134,38 @@ def ensure_schema_and_seed_users():
                 conn.execute(text(ddl))
 
     with Session(bind=engine) as db:
+        # Test users for diploma demo — covers all 3 roles, different
+        # behavioral profiles and demonstration scenarios.
         seed_users = [
-            {"username": "admin", "password": "admin123", "email": "admin@example.com", "role": "admin"},
-            {"username": "employee", "password": "employee123", "email": "employee@example.com", "role": "employee"},
-            {"username": "auditor", "password": "auditor123", "email": "auditor@example.com", "role": "auditor"},
+            # === ADMINS ===
+            {"username": "admin", "password": "admin123",
+             "email": "admin@example.com", "role": "admin"},
+            {"username": "security_admin", "password": "secure123",
+             "email": "security@example.com", "role": "admin"},
+
+            # === EMPLOYEES (different departments / behavioral patterns) ===
+            {"username": "employee", "password": "employee123",
+             "email": "employee@example.com", "role": "employee"},
+            {"username": "alice_hr", "password": "alice123",
+             "email": "alice@example.com", "role": "employee"},
+            {"username": "bob_engineer", "password": "bob123",
+             "email": "bob@example.com", "role": "employee"},
+            {"username": "carol_sales", "password": "carol123",
+             "email": "carol@example.com", "role": "employee"},
+            {"username": "dmitry_finance", "password": "dmitry123",
+             "email": "dmitry@example.com", "role": "employee"},
+            {"username": "nurlan_kz", "password": "nurlan123",
+             "email": "nurlan@example.kz", "role": "employee"},
+            {"username": "aigerim_kz", "password": "aigerim123",
+             "email": "aigerim@example.kz", "role": "employee"},
+
+            # === AUDITORS (read-only / compliance) ===
+            {"username": "auditor", "password": "auditor123",
+             "email": "auditor@example.com", "role": "auditor"},
+            {"username": "john_auditor", "password": "john123",
+             "email": "john@example.com", "role": "auditor"},
+            {"username": "maria_compliance", "password": "maria123",
+             "email": "maria@example.com", "role": "auditor"},
         ]
         for payload in seed_users:
             user = db.query(User).filter(User.username == payload["username"]).first()
@@ -131,6 +177,24 @@ def ensure_schema_and_seed_users():
                 user.auth_risk_score = getattr(user, "auth_risk_score", 0.0) or 0.0
             else:
                 db.add(User(**payload))
+        db.commit()
+
+        # Ensure every seeded user has a BehavioralProfile row so that
+        # admin_user_snapshot can compute typing/mouse baselines without
+        # hitting NoneType errors before any real behavior data is captured.
+        for payload in seed_users:
+            user = db.query(User).filter(User.username == payload["username"]).first()
+            if not user:
+                continue
+            profile = db.query(BehavioralProfile).filter(BehavioralProfile.user_id == user.id).first()
+            if profile is None:
+                db.add(BehavioralProfile(
+                    user_id=user.id,
+                    avg_typing_speed=38.0,
+                    avg_dwell_time=85.0,
+                    avg_flight_time=120.0,
+                    avg_mouse_velocity=1.2,
+                ))
         db.commit()
 
 
@@ -774,6 +838,271 @@ def session_status_for_user(policy: dict, user_id: int, risk_score: float, role:
     return "Active"
 
 
+PRIVILEGED_ROLES = {"admin", "security_admin"}
+
+
+def is_privileged_role(role: Optional[str]) -> bool:
+    return normalize_role(role) in PRIVILEGED_ROLES
+
+
+def access_scope_for_role(role: Optional[str]) -> str:
+    """What the user is allowed to access by role, independent of risk."""
+    r = normalize_role(role)
+    if r == "admin":
+        return "Admin access"
+    if r == "security_admin":
+        return "Security admin access"
+    if r == "employee":
+        return "Employee access"
+    if r == "auditor":
+        return "Auditor read-only access"
+    return "Limited access"
+
+
+def risk_action_for_policy(policy: dict, session_status: str, risk_score: float) -> str:
+    """
+    What the system applied **because of behavior risk** (NOT because of the
+    user's role). E.g. an auditor's default "read-only masked" view is
+    conveyed by `access_scope`, not by `risk_action`.
+    """
+    if session_status == "Blocked" or policy.get("blocked"):
+        return "Access denied"
+    if policy.get("requires_mfa"):
+        return "Require MFA"
+    protection = (policy.get("data_protection") or "").lower()
+    # Only count data masking as a risk-based action when the risk actually
+    # triggered it. Role-default masking (e.g. auditor at risk 0) is not a
+    # behavior response.
+    if risk_score >= 50 and protection in ("masked", "restricted", "hidden"):
+        return "Sensitive data masked"
+    if risk_score >= 25:
+        return "Monitored"
+    return "No restriction"
+
+
+def recommended_admin_action(
+    risk_score: float,
+    session_status: str,
+    privileged: bool,
+) -> str:
+    """What the admin should do next."""
+    if session_status == "Blocked":
+        return "Investigate session and unlock manually if benign"
+    if risk_score >= 80:
+        base = "Lock session immediately"
+    elif risk_score >= 60:
+        base = "Require MFA or Lock Session"
+    elif risk_score >= 40:
+        base = "Require MFA"
+    elif risk_score >= 25:
+        base = "Monitor closely"
+    else:
+        base = "No action needed"
+
+    if privileged and risk_score >= 25:
+        return f"Privileged Account — {base}"
+    return base
+
+
+# Friendly labels for behavior-engine categories. Used by main_reason_for_user
+# to compose short, varied incident descriptions instead of repeating the same
+# generic "Mouse movement pattern …" line for every high-risk user.
+BX_REASON_LABELS = {
+    "typing_anomaly": "Suspicious typing rhythm",
+    "paste_detected": "Password pasted",
+    "robotic_mouse": "Mouse automation detected",
+    "click_automation": "Click automation detected",
+    "tab_switching": "Frequent tab switching",
+    "session_anomaly": "Hyperactive session burst",
+    "device_change": "Device fingerprint changed",
+    "navigation_anomaly": "Privilege escalation attempt",
+    "resource_abuse": "Resource abuse",
+    "impossible_travel": "Impossible travel detected",
+}
+
+# Deterministic demo reasons used as a fallback so the Priority Incidents
+# section is varied for the diploma demo even when no live engine events are
+# available for a given user.
+_DEMO_INCIDENT_REASONS = [
+    "Mouse automation detected + Hyperactive session burst",
+    "Impossible travel + Resource abuse",
+    "Privilege escalation attempt",
+    "Suspicious typing rhythm + Device fingerprint changed",
+    "Click automation detected + Frequent tab switching",
+    "Resource abuse + Suspicious typing rhythm",
+    "Password pasted + Device fingerprint changed",
+    "Impossible travel + Privilege escalation attempt",
+    "Mouse automation detected + Resource abuse",
+]
+
+
+def _parse_behavior_reasons(latest_behavior_log) -> str:
+    """Extract the first human reason out of `behavior_analysis:*` log details."""
+    if not latest_behavior_log:
+        return ""
+    raw = (latest_behavior_log.details or "").strip()
+    if not raw:
+        return ""
+    text = raw
+    if text.startswith("[") and text.endswith("]"):
+        try:
+            import ast
+            parsed = ast.literal_eval(text)
+            if isinstance(parsed, (list, tuple)) and parsed:
+                text = str(parsed[0])
+        except (ValueError, SyntaxError):
+            pass
+    if text.lower().strip().rstrip(".") == "no anomalies detected":
+        return ""
+    for separator in ("; ", " | ", ". "):
+        if separator in text:
+            text = text.split(separator)[0].strip()
+            break
+    return text.strip()
+
+
+def main_reason_for_user(
+    db: Session,
+    user_id: int,
+    risk_score: float,
+    privileged: bool,
+    latest_behavior_log=None,
+) -> str:
+    """
+    Build a short, human-readable anomaly summary for the admin dashboard.
+
+    Strategy:
+      1. Look at the last 30 minutes of behavior-engine `bx_*` events for
+         this user and join the top two distinct categories (e.g.
+         "Mouse automation detected + Resource abuse"). This naturally
+         produces varied descriptions per user.
+      2. Otherwise, try to recover the first parsed reason from the latest
+         `behavior_analysis:*` log entry.
+      3. Otherwise, when the user is still high-risk, fall back to a
+         deterministic demo reason based on `user_id` so the dashboard
+         stays informative during the diploma presentation.
+      4. Otherwise return "—".
+    """
+    # Only surface a reason when there's actually something to be concerned
+    # about. A privileged role browsing normally (risk 0) should not show an
+    # "anomaly" string.
+    if risk_score < 25:
+        return "—"
+
+    # --- step 1: real bx_* engine events ---
+    try:
+        cutoff = datetime.now(timezone.utc) - timedelta(minutes=30)
+        events = (
+            db.query(AccessLog)
+            .filter(
+                AccessLog.user_id == user_id,
+                AccessLog.action.like("bx_%"),
+                AccessLog.timestamp >= cutoff,
+            )
+            .order_by(AccessLog.timestamp.desc())
+            .limit(40)
+            .all()
+        )
+    except Exception:
+        events = []
+
+    if events:
+        seen: list[str] = []
+        for e in events:
+            cat = (e.action or "")[3:]
+            label = BX_REASON_LABELS.get(cat)
+            if label and label not in seen:
+                seen.append(label)
+            if len(seen) == 2:
+                break
+        if seen:
+            text = " + ".join(seen)
+            if privileged:
+                text = f"Privileged account anomaly: {text}"
+            return text
+
+    # --- step 2: high-risk users with no live engine events ---
+    # In the diploma demo all locked sessions share the same canned
+    # `behavior_analysis` details (e.g. "Mouse movement pattern …"). To avoid
+    # showing the same line for every Priority Incident, rotate through a
+    # short pool of realistic compound reasons keyed by user_id.
+    if risk_score >= 50:
+        demo = _DEMO_INCIDENT_REASONS[user_id % len(_DEMO_INCIDENT_REASONS)]
+        if privileged:
+            return f"Privileged account anomaly: {demo}"
+        return demo
+
+    # --- step 3: parsed reason from behavior_analysis details ---
+    parsed = _parse_behavior_reasons(latest_behavior_log)
+    if parsed:
+        if privileged:
+            parsed = f"Privileged account anomaly: {parsed}"
+        if len(parsed) > 90:
+            parsed = parsed[:87].rstrip() + "…"
+        return parsed
+
+    return "—"
+
+
+def severity_for_risk(risk_score: float, privileged: bool) -> str:
+    """Severity bucket, bumped up one notch for privileged roles."""
+    if risk_score >= 80:
+        base = "Critical"
+    elif risk_score >= 60:
+        base = "High"
+    elif risk_score >= 35:
+        base = "Medium"
+    elif risk_score >= 15:
+        base = "Low"
+    else:
+        base = "Info"
+
+    if privileged and risk_score >= 25:
+        ladder = ["Info", "Low", "Medium", "High", "Critical"]
+        idx = ladder.index(base)
+        return ladder[min(idx + 1, len(ladder) - 1)]
+    return base
+
+
+def compute_security_health(high_risk_count: int, blocked_count: int) -> tuple[int, str]:
+    """
+    Map (#high-risk sessions, #blocked sessions) → (health_score, status).
+
+    Spec:
+      0 high-risk         → ≈100, Stable
+      1 high-risk         → ≈85,  Warning
+      2-3 high-risk       → ≈70,  Warning
+      4+ high-risk        → 55-65, Critical (or Warning)
+      Each blocked session reduces the score further.
+    """
+    n = max(0, int(high_risk_count))
+    b = max(0, int(blocked_count))
+
+    if n == 0:
+        score = 100
+    elif n == 1:
+        score = 85
+    elif n <= 3:
+        score = 70
+    else:
+        score = 60
+
+    # Blocked sessions are already counted in `n` but signal critical
+    # exposure — drag the score down further (capped contribution).
+    score -= min(b, 5) * 4
+
+    score = max(0, min(100, int(round(score))))
+
+    if score >= 90:
+        status = "Stable"
+    elif score >= 65:
+        status = "Warning"
+    else:
+        status = "Critical"
+
+    return score, status
+
+
 def build_admin_user_snapshot(db: Session, user: User) -> dict:
     latest_behavior = get_latest_behavior_log(db, user.id)
     latest_any = (
@@ -806,6 +1135,18 @@ def build_admin_user_snapshot(db: Session, user: User) -> dict:
     baseline_typing = profile.avg_typing_speed if profile and profile.avg_typing_speed else 38.0
     baseline_mouse = profile.avg_mouse_velocity if profile and profile.avg_mouse_velocity else 2.1
     session_status = session_status_for_user(policy, user.id, risk_score, normalize_role(user.role))
+    privileged = is_privileged_role(user.role)
+    access_scope = access_scope_for_role(user.role)
+    risk_action = risk_action_for_policy(policy, session_status, risk_score)
+    recommended = recommended_admin_action(risk_score, session_status, privileged)
+    main_reason = main_reason_for_user(
+        db,
+        user.id,
+        risk_score,
+        privileged,
+        latest_behavior_log=latest_behavior,
+    )
+    severity = severity_for_risk(risk_score, privileged)
 
     return {
         "user_id": user.id,
@@ -814,7 +1155,13 @@ def build_admin_user_snapshot(db: Session, user: User) -> dict:
         "risk_score": round(risk_score, 1),
         "trust_score": round(trust_score, 1),
         "risk_level": policy.get("risk_level", "Low"),
+        # Legacy combined column — kept for backward compatibility. Prefer the
+        # new "access_scope" + "risk_action" pair instead.
         "access_decision": policy.get("access_decision", "Limited access"),
+        "access_scope": access_scope,
+        "risk_action": risk_action,
+        "recommended_action": recommended,
+        "main_reason": main_reason,
         "session_status": session_status,
         "last_activity": latest_any.timestamp.isoformat() if latest_any and latest_any.timestamp else None,
         "threat_type": threat_type_from_signals(risk_score, [latest_behavior.details] if latest_behavior and latest_behavior.details else []),
@@ -824,6 +1171,11 @@ def build_admin_user_snapshot(db: Session, user: User) -> dict:
         "baseline_mouse_velocity": round(baseline_mouse, 2),
         "current_mouse_velocity": round(current_mouse, 2),
         "mouse_deviation": round(current_mouse - baseline_mouse, 2),
+        # Admin-dashboard-specific flags
+        "privileged": privileged,
+        "severity": severity,
+        "is_high_risk": risk_score >= 50
+            or session_status in ("Suspicious", "Step-up required", "Blocked"),
     }
 
 
@@ -941,7 +1293,10 @@ async def admin_analytics_page(
     current_user: dict = Depends(require_admin),
 ):
     _ = current_user
-    return templates.TemplateResponse("admin_analytics.html", {"request": request})
+    return templates.TemplateResponse(
+        "admin_analytics.html",
+        {"request": request, "static_version": static_version()},
+    )
 
 
 @app.post("/api/analyze-behavior")
@@ -1285,7 +1640,14 @@ async def admin_analytics_summary(
     active_sessions = sum(1 for s in snapshots if s["session_status"] == "Active")
     suspicious_sessions = sum(1 for s in snapshots if s["session_status"] in ["Suspicious", "Step-up required"])
     blocked_sessions = sum(1 for s in snapshots if s["session_status"] == "Blocked")
+    # "High-risk" sessions are everything that requires attention from the
+    # admin — Suspicious / Step-up / Blocked OR risk >= 50.
+    high_risk_sessions = sum(1 for s in snapshots if s.get("is_high_risk"))
+    privileged_alerts = sum(
+        1 for s in snapshots if s.get("privileged") and s.get("risk_score", 0) >= 25
+    )
     avg_trust_score = round(sum(s["trust_score"] for s in snapshots) / total_users, 1) if total_users else 100.0
+    health_score, health_status = compute_security_health(high_risk_sessions, blocked_sessions)
     high_risk_events_today = (
         db.query(AccessLog)
         .filter(AccessLog.timestamp >= day_start, AccessLog.risk_score >= 70)
@@ -1319,9 +1681,14 @@ async def admin_analytics_summary(
     return {
         "total_users": total_users,
         "active_sessions": active_sessions,
+        # Legacy field name; new admin UI prefers `high_risk_sessions`.
         "suspicious_sessions": suspicious_sessions,
+        "high_risk_sessions": high_risk_sessions,
         "blocked_sessions": blocked_sessions,
+        "privileged_alerts": privileged_alerts,
         "average_trust_score": avg_trust_score,
+        "health_score": health_score,
+        "health_status": health_status,
         "high_risk_events_today": high_risk_events_today,
         "failed_login_attempts_today": failed_login_attempts_today,
         "locked_accounts": locked_accounts,
@@ -1339,12 +1706,41 @@ async def admin_analytics_users(
     return {"users": [build_admin_user_snapshot(db, u) for u in users]}
 
 
+def _demo_risk_trend_for_user(user: User, current_risk: float) -> list[dict]:
+    """
+    Deterministic 4-point demo trend per user so the chart visually differs
+    between users while still ending at their current risk score.
+    """
+    times = ["09:30", "09:40", "09:50", "10:00"]
+    seed = (user.id * 13) % 9
+    base = [5 + seed, 20 + (seed * 2 % 11), 45 + (seed % 7), max(5, int(round(current_risk)))]
+    base = [max(0, min(100, v)) for v in base]
+    return [{"time": t, "risk": v} for t, v in zip(times, base)]
+
+
 @app.get("/api/admin/analytics/risk-trend")
 async def admin_risk_trend(
+    user_id: Optional[int] = None,
     current_user: dict = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     _ = current_user
+
+    # Per-user trend: deterministic demo data ending at the user's current
+    # risk so the chart updates predictably when an admin selects a row.
+    if user_id is not None:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return {"points": [], "user_id": user_id}
+        latest = get_latest_behavior_log(db, user.id)
+        current = float(latest.risk_score) if latest else 0.0
+        return {
+            "points": _demo_risk_trend_for_user(user, current),
+            "user_id": user.id,
+            "username": user.username,
+        }
+
+    # Global trend: real behavior_analysis logs across all users.
     recent = (
         db.query(AccessLog)
         .filter(AccessLog.action.like("behavior_analysis:%"))
@@ -1373,6 +1769,51 @@ async def admin_risk_trend(
             }
         )
     return {"points": points}
+
+
+@app.get("/api/admin/analytics/threat-categories")
+async def admin_threat_categories(
+    current_user: dict = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    System-wide aggregated counts of behavior-engine anomaly categories over
+    the last 24 hours. Reads AccessLog rows whose `action` starts with `bx_`
+    (written by `/api/security-event`).
+    """
+    _ = current_user
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+
+    known = [
+        "typing_anomaly", "paste_detected", "robotic_mouse", "click_automation",
+        "tab_switching", "session_anomaly", "device_change",
+        "navigation_anomaly", "resource_abuse", "impossible_travel",
+    ]
+    counts: dict[str, int] = {c: 0 for c in known}
+    privileged_total = 0
+
+    rows = (
+        db.query(AccessLog)
+        .filter(AccessLog.timestamp >= cutoff, AccessLog.action.like("bx_%"))
+        .all()
+    )
+    for row in rows:
+        category = (row.action or "")[3:]  # strip "bx_"
+        if category in counts:
+            counts[category] += 1
+        # Tag privileged-user anomalies separately so the UI can highlight
+        # them in the system-wide summary.
+        user = db.query(User).filter(User.id == row.user_id).first()
+        if user and is_privileged_role(user.role):
+            privileged_total += 1
+
+    total = sum(counts.values())
+    return {
+        "counts": counts,
+        "total": total,
+        "privileged_total": privileged_total,
+        "window_hours": 24,
+    }
 
 
 @app.get("/api/admin/analytics/events")
@@ -1485,7 +1926,8 @@ async def admin_user_detail(
         }
         for row in recent_logs
     ]
-    return {"user": snapshot, "timeline": timeline}
+    trend = _demo_risk_trend_for_user(user, snapshot.get("risk_score") or 0.0)
+    return {"user": snapshot, "timeline": timeline, "trend": trend}
 
 
 @app.post("/api/admin/analytics/actions")

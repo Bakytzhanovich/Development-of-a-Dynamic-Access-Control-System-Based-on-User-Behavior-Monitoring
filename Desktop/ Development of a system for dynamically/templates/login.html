@@ -6,26 +6,16 @@
     <title>Login - Dynamic Access Control System</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- Genesis Design Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700;900&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/static/i18n.js"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    colors: {
-                        'genesis-bg': '#FAFAFA',
-                        'genesis-surface': '#FFFFFF',
-                        'genesis-text': '#0A0A0A',
-                        'genesis-secondary': '#6B6B6B',
-                        'genesis-border': '#E8E8EC',
-                        'genesis-primary': '#6366F1',
-                        'genesis-primary-hover': '#4F46E5',
-                    },
                     fontFamily: {
-                        'sans': ['DM Sans', 'system-ui', 'sans-serif'],
-                        'mono': ['JetBrains Mono', 'monospace'],
+                        'sans': ['Roboto', 'system-ui', 'sans-serif'],
+                        'mono': ['Roboto Mono', 'ui-monospace', 'monospace'],
                     }
                 }
             }
@@ -33,308 +23,439 @@
     </script>
     <style>
         :root {
-            --bg: #FAFAFA;
-            --surface: #FFFFFF;
-            --text: #0A0A0A;
-            --text-secondary: #6B6B6B;
-            --border: #E8E8EC;
-            --primary: #6366F1;
-            --primary-hover: #4F46E5;
-            --success: #10B981;
-            --warning: #F59E0B;
-            --error: #EF4444;
+            --bg-deep: #05060B;
+            --bg: #0A0D17;
+            --surface: rgba(20, 24, 38, 0.55);
+            --surface-strong: rgba(28, 32, 48, 0.75);
+            --surface-alt: rgba(255, 255, 255, 0.04);
+            --text: #ECEFF7;
+            --text-secondary: #8B95B0;
+            --text-muted: #5C6478;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-strong: rgba(255, 255, 255, 0.16);
+            --primary: #FFFFFF;
+            --primary-hover: #ECEFF7;
+            --accent-red: #FF3B47;
+            --accent-red-glow: rgba(255, 59, 71, 0.55);
+            --accent-red-dark: #C72532;
+            --accent-red-bg: rgba(255, 59, 71, 0.12);
+            --neon-cyan: #66E0FF;
+            --warning: #FFB300;
+            --warning-bg: rgba(255, 179, 0, 0.12);
+            --success: #00E676;
+            --success-bg: rgba(0, 230, 118, 0.12);
         }
+
+        * { font-family: 'Roboto', system-ui, sans-serif; box-sizing: border-box; }
+
+        html, body { height: 100%; }
 
         body {
-            background-color: var(--bg);
+            margin: 0;
+            background:
+                radial-gradient(ellipse at 20% 10%, rgba(255, 59, 71, 0.10), transparent 50%),
+                radial-gradient(ellipse at 80% 90%, rgba(102, 224, 255, 0.08), transparent 50%),
+                linear-gradient(180deg, var(--bg-deep) 0%, var(--bg) 100%);
             color: var(--text);
+            min-height: 100vh;
+            letter-spacing: 0.01em;
+            overflow-x: hidden;
         }
 
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(8px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        #threeBg {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
         }
 
-        @keyframes staggerFadeIn {
-            0% {
-                opacity: 0;
-                transform: translateY(12px);
-            }
-            100% {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .vignette {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+            background: radial-gradient(ellipse at center, transparent 0%, rgba(5, 6, 11, 0.55) 80%, rgba(5, 6, 11, 0.85) 100%);
+            pointer-events: none;
         }
 
-        .fade-in {
-            animation: fadeIn 0.4s ease-out;
+        .scanlines {
+            position: fixed;
+            inset: 0;
+            z-index: 2;
+            pointer-events: none;
+            background-image: repeating-linear-gradient(
+                0deg,
+                rgba(255, 255, 255, 0.015) 0px,
+                rgba(255, 255, 255, 0.015) 1px,
+                transparent 1px,
+                transparent 3px
+            );
+            mix-blend-mode: overlay;
+            opacity: 0.5;
         }
 
-        .stagger-fade-in {
-            animation: staggerFadeIn 0.5s ease-out both;
+        main {
+            position: relative;
+            z-index: 10;
         }
 
-        .stagger-delay-1 { animation-delay: 0.1s; }
-        .stagger-delay-2 { animation-delay: 0.2s; }
-        .stagger-delay-3 { animation-delay: 0.3s; }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(14px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            50% { transform: translateX(4px); }
+            75% { transform: translateX(-2px); }
+        }
+        @keyframes criticalPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255, 59, 71, 0.55), 0 8px 32px rgba(255, 59, 71, 0.15); }
+            50% { box-shadow: 0 0 0 8px rgba(255, 59, 71, 0), 0 8px 40px rgba(255, 59, 71, 0.25); }
+        }
+        @keyframes glowPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255, 59, 71, 0.35); }
+            50% { box-shadow: 0 0 24px 4px rgba(255, 59, 71, 0.55); }
+        }
+        @keyframes brandSpin {
+            from { transform: rotateY(0deg); }
+            to { transform: rotateY(360deg); }
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
 
-        .card {
-            background-color: var(--surface);
+        .fade-up { animation: fadeUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+        .delay-1 { animation-delay: 0.08s; }
+        .delay-2 { animation-delay: 0.16s; }
+        .delay-3 { animation-delay: 0.26s; }
+        .delay-4 { animation-delay: 0.36s; }
+        .shake { animation: shake 0.4s ease-in-out; }
+
+        /* Glass card */
+        .glass {
+            background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            border-radius: 16px;
+            backdrop-filter: blur(18px) saturate(140%);
+            -webkit-backdrop-filter: blur(18px) saturate(140%);
+            box-shadow:
+                0 1px 0 rgba(255, 255, 255, 0.05) inset,
+                0 20px 60px rgba(0, 0, 0, 0.45);
+            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+            transform-style: preserve-3d;
         }
 
-        .card:hover {
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+        .glass:hover {
+            border-color: var(--border-strong);
+            box-shadow:
+                0 1px 0 rgba(255, 255, 255, 0.07) inset,
+                0 28px 80px rgba(0, 0, 0, 0.55),
+                0 0 0 1px rgba(255, 59, 71, 0.08);
+        }
+
+        /* Brand mark */
+        .brand-mark {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--accent-red) 0%, #B71929 100%);
+            color: #FFFFFF;
+            font-weight: 900;
+            font-size: 22px;
+            letter-spacing: -0.02em;
+            box-shadow:
+                0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+                0 8px 24px rgba(255, 59, 71, 0.35);
+            animation: glowPulse 3.5s ease-in-out infinite;
+        }
+        .brand-mark::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, rgba(255, 59, 71, 0.5), transparent 70%);
+            filter: blur(8px);
+            z-index: -1;
+        }
+
+        /* Pill button */
+        .btn {
+            border-radius: 9999px;
+            padding: 12px 24px;
+            font-weight: 500;
+            font-size: 13px;
+            line-height: 1;
+            transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+            border: 1px solid transparent;
+            cursor: pointer;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            font-family: 'Roboto', sans-serif;
         }
 
         .btn-primary {
-            background-color: var(--primary);
-            color: white;
-            border-radius: 6px;
-            padding: 10px 16px;
-            font-weight: 500;
-            transition: all 0.2s ease;
-            border: none;
-            cursor: pointer;
+            background: linear-gradient(135deg, #FFFFFF 0%, #E8ECF4 100%);
+            color: #0A0D17;
+            box-shadow: 0 6px 20px rgba(255, 255, 255, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+            position: relative;
+            overflow: hidden;
         }
-
-        .btn-primary:hover {
-            background-color: var(--primary-hover);
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+        .btn-primary::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            background-size: 200% 100%;
+            animation: shimmer 3s linear infinite;
+            pointer-events: none;
+            opacity: 0.5;
         }
-
-        .btn-primary:active {
-            transform: translateY(1px);
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(255, 255, 255, 0.2), 0 0 0 1px rgba(255, 59, 71, 0.3) inset;
         }
+        .btn-primary:active:not(:disabled) { transform: translateY(0); }
+        .btn-primary:disabled {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-muted);
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        .btn-primary:disabled::after { display: none; }
 
+        /* Inputs */
         .input-field {
-            background-color: var(--surface);
+            background: rgba(255, 255, 255, 0.04);
             border: 1px solid var(--border);
             color: var(--text);
-            border-radius: 6px;
-            padding: 10px 14px;
+            border-radius: 10px;
+            padding: 12px 16px;
             font-size: 14px;
-            transition: all 0.2s ease;
+            font-family: 'Roboto', sans-serif;
+            transition: all 0.25s ease;
+            width: 100%;
         }
-
         .input-field:focus {
             outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+            border-color: var(--accent-red);
+            background: rgba(255, 255, 255, 0.06);
+            box-shadow:
+                0 0 0 4px rgba(255, 59, 71, 0.1),
+                0 0 20px rgba(255, 59, 71, 0.2);
         }
+        .input-field::placeholder { color: var(--text-muted); }
 
-        .input-field::placeholder {
-            color: var(--text-secondary);
-        }
-
+        /* Alert */
         .alert {
-            border-radius: 6px;
-            padding: 10px 14px;
+            border-radius: 10px;
+            padding: 12px 16px;
             font-size: 13px;
             border: 1px solid;
+            backdrop-filter: blur(8px);
         }
-
         .alert-error {
-            background-color: #FEF2F2;
-            border-color: #FECACA;
-            color: var(--error);
+            background: var(--accent-red-bg);
+            border-color: rgba(255, 59, 71, 0.3);
+            color: #FFB1B7;
+            animation: criticalPulse 1.8s ease-in-out 1;
         }
-
         .alert-warning {
-            background-color: #FFFBEB;
-            border-color: #FED7AA;
-            color: var(--warning);
+            background: var(--warning-bg);
+            border-color: rgba(255, 179, 0, 0.3);
+            color: #FFD17A;
         }
-
         .alert-info {
-            background-color: #F0F9FF;
-            border-color: #BAE6FD;
-            color: var(--primary);
+            background: var(--surface-alt);
+            border-color: var(--border);
+            color: var(--text);
         }
 
-        .language-switch {
-            display: flex;
-            gap: 6px;
-            padding: 4px;
-            background-color: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-        }
-
-        .language-switch button {
-            padding: 6px 12px;
-            border: none;
-            background: transparent;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 500;
+        .field-label {
+            font-size: 11px;
+            font-weight: 600;
             color: var(--text-secondary);
-            border-radius: 4px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        /* Status indicator dot */
+        .status-dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 8px var(--success), 0 0 0 4px rgba(0, 230, 118, 0.15);
+            animation: glowPulse 2.2s ease-in-out infinite;
+        }
+
+        /* Floating shapes (CSS-only ambient) */
+        .float-shape {
+            animation: float 6s ease-in-out infinite;
+        }
+        .float-shape.delay { animation-delay: 1.5s; }
+
+        /* Feature pill */
+        .feature-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            background: var(--surface-alt);
+            border: 1px solid var(--border);
+            border-radius: 9999px;
+            font-size: 12px;
+            color: var(--text-secondary);
             transition: all 0.2s ease;
         }
-
-        .language-switch button.active {
-            background-color: var(--primary);
-            color: white;
-        }
-
-        .language-switch button:hover:not(.active) {
+        .feature-pill:hover {
+            border-color: var(--border-strong);
             color: var(--text);
-            background-color: rgba(99, 102, 241, 0.08);
+            transform: translateY(-1px);
         }
-
-        .shake {
-            animation: shake 0.35s ease-in-out;
-        }
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-3px); }
-            50% { transform: translateX(3px); }
-            75% { transform: translateX(-2px); }
+        .feature-pill .dot {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: var(--accent-red);
+            box-shadow: 0 0 6px var(--accent-red);
         }
     </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4 sm:p-6">
-    <div class="w-full max-w-md">
-        <!-- Header with Language Switcher -->
-        <div class="flex items-center justify-between mb-12 stagger-fade-in">
-            <div>
-                <h1 class="text-2xl font-bold" data-i18n="login.platformTitle">Dynamic Access Control System</h1>
-                <p class="text-sm text-[var(--text-secondary)] mt-1" data-i18n="login.platformSubtitle">Monitor behavior in real time</p>
-            </div>
-            <div class="language-switch">
-                <button class="active" data-lang="en" onclick="switchLanguage('en')">EN</button>
-                <button data-lang="ru" onclick="switchLanguage('ru')">РУ</button>
-                <button data-lang="kk" onclick="switchLanguage('kk')">ҚҚ</button>
-            </div>
-        </div>
+<body>
+    <canvas id="threeBg" data-mode="hero" data-color="0xFF3B47"></canvas>
+    <div class="vignette"></div>
+    <div class="scanlines"></div>
 
-        <!-- Login Card -->
-        <div class="card stagger-fade-in stagger-delay-1 p-8">
-            <h2 class="text-xl font-bold mb-2" data-i18n="login.title">Welcome Back</h2>
-            <p class="text-sm text-[var(--text-secondary)] mb-6" data-i18n="login.subtitle">Sign in to continue</p>
-
-            <form id="loginForm" class="space-y-4">
-                <!-- Username -->
+    <main class="min-h-screen flex items-center justify-center p-4 sm:p-6">
+        <div class="w-full max-w-md">
+            <!-- Header (no language switcher on login) -->
+            <div class="flex items-center gap-4 mb-10 fade-up">
+                <div class="brand-mark">A</div>
                 <div>
-                    <label for="username" class="block text-sm font-medium mb-2" data-i18n="login.username">Username</label>
-                    <input 
-                        type="text" 
-                        id="username" 
-                        name="username" 
-                        required
-                        class="input-field w-full"
-                        data-i18n-placeholder="login.username"
-                        placeholder="Username"
-                    >
+                    <div class="text-[10px] uppercase tracking-[0.25em] font-semibold text-[var(--accent-red)] mb-1">Access Control</div>
+                    <h1 class="text-lg font-semibold text-[var(--text)] leading-tight" data-i18n="login.platformTitle">Dynamic Access Control System</h1>
+                </div>
+            </div>
+
+            <!-- Login Card -->
+            <div class="glass fade-up delay-1 p-8 relative">
+                <!-- Decorative corner -->
+                <div class="absolute top-4 right-4 flex items-center gap-2 text-[10px] uppercase tracking-widest text-[var(--text-muted)]">
+                    <span class="status-dot"></span>
+                    <span>SECURE</span>
                 </div>
 
-                <!-- Password -->
-                <div>
-                    <label for="password" class="block text-sm font-medium mb-2" data-i18n="login.password">Password</label>
-                    <input 
-                        type="password" 
-                        id="password" 
-                        name="password" 
-                        required
-                        class="input-field w-full"
-                        data-i18n-placeholder="login.password"
-                        placeholder="Password"
-                    >
-                </div>
+                <h2 class="text-2xl font-bold mb-1 text-[var(--text)]" data-i18n="login.title">Welcome Back</h2>
+                <p class="text-sm text-[var(--text-secondary)] mb-7" data-i18n="login.subtitle">Sign in to continue</p>
 
-                <!-- Error Messages -->
-                <div id="errorMessage" class="alert alert-error hidden fade-in"></div>
-                <div id="warningMessage" class="alert alert-warning hidden fade-in"></div>
-                <div id="lockMessage" class="alert alert-info hidden fade-in">
-                    <strong data-i18n="login.accountLocked">Account temporarily locked</strong>
-                    <div class="mt-1">
-                        <span data-i18n="login.retryIn">Retry in</span>
-                        <strong id="lockCountdown">--</strong>
-                        <span data-i18n="login.seconds">seconds</span>
+                <form id="loginForm" class="space-y-5">
+                    <div>
+                        <label for="username" class="field-label" data-i18n="login.username">Username</label>
+                        <input
+                            type="text"
+                            id="username"
+                            name="username"
+                            required
+                            class="input-field"
+                            data-i18n-placeholder="login.username"
+                            placeholder="Username"
+                            autocomplete="username"
+                        >
                     </div>
-                </div>
 
-                <!-- Submit Button -->
-                <button 
-                    id="submitBtn"
-                    type="submit" 
-                    class="btn-primary w-full mt-6 text-sm font-medium"
-                    data-i18n="login.login"
-                >
-                    Login
-                </button>
-            </form>
-        </div>
+                    <div>
+                        <label for="password" class="field-label" data-i18n="login.password">Password</label>
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            required
+                            class="input-field"
+                            data-i18n-placeholder="login.password"
+                            placeholder="Password"
+                            autocomplete="current-password"
+                        >
+                    </div>
 
-        <!-- Demo Accounts Info -->
-        <div class="card stagger-fade-in stagger-delay-2 p-4 mt-4 text-center text-sm bg-blue-50 border-blue-200">
-            <strong class="text-[var(--primary)]" data-i18n="login.demoAccounts">Demo Accounts</strong>
-            <p class="text-[var(--text-secondary)] text-xs mt-1 font-mono">
-                admin/admin123 | employee/employee123 | auditor/auditor123
-            </p>
-        </div>
+                    <div id="errorMessage" class="alert alert-error hidden"></div>
+                    <div id="warningMessage" class="alert alert-warning hidden"></div>
+                    <div id="lockMessage" class="alert alert-error hidden">
+                        <strong data-i18n="login.accountLocked">Account temporarily locked</strong>
+                        <div class="mt-1">
+                            <span data-i18n="login.retryIn">Retry in</span>
+                            <strong id="lockCountdown">--</strong>
+                            <span data-i18n="login.seconds">seconds</span>
+                        </div>
+                    </div>
 
-        <!-- Platform Features -->
-        <div class="mt-8 space-y-2 text-sm text-[var(--text-secondary)] stagger-fade-in stagger-delay-3">
-            <p class="flex items-start gap-2">
-                <span class="inline-block w-1.5 h-1.5 rounded-full bg-[var(--primary)] mt-1.5 flex-shrink-0"></span>
-                <span data-i18n="login.feature1">Live risk scoring from keystroke and mouse signals</span>
-            </p>
-            <p class="flex items-start gap-2">
-                <span class="inline-block w-1.5 h-1.5 rounded-full bg-[var(--primary)] mt-1.5 flex-shrink-0"></span>
-                <span data-i18n="login.feature2">Step-up authentication when confidence drops</span>
-            </p>
-            <p class="flex items-start gap-2">
-                <span class="inline-block w-1.5 h-1.5 rounded-full bg-[var(--primary)] mt-1.5 flex-shrink-0"></span>
-                <span data-i18n="login.feature3">Role-aware access decisions and resource masking</span>
-            </p>
+                    <button
+                        id="submitBtn"
+                        type="submit"
+                        class="btn btn-primary w-full mt-2"
+                        data-i18n="login.login"
+                    >
+                        Login
+                    </button>
+                </form>
+            </div>
+
+            <!-- Feature pills -->
+            <div class="flex flex-wrap gap-2 mt-6 fade-up delay-3 justify-center">
+                <div class="feature-pill"><span class="dot"></span><span data-i18n="login.feature1">Live risk scoring from keystroke and mouse signals</span></div>
+            </div>
+            <div class="flex flex-wrap gap-2 mt-2 fade-up delay-4 justify-center">
+                <div class="feature-pill"><span class="dot"></span><span data-i18n="login.feature2">Step-up authentication when confidence drops</span></div>
+                <div class="feature-pill"><span class="dot"></span><span data-i18n="login.feature3">Role-aware access decisions and resource masking</span></div>
+            </div>
         </div>
-    </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script src="/static/three-bg.js"></script>
+    <script src="/static/behavior-engine.js"></script>
 
     <script>
-        // Initialize language
+        // Silent behavioral analysis during authentication.
+        // Engine logs typing-rhythm anomalies, paste detection and device
+        // fingerprint changes to the existing /api/security-event endpoint.
+        if (window.BehaviorEngine) {
+            window.BehaviorEngine.init({
+                page: 'login',
+                role: 'anonymous',
+                autoLog: false, // can't authenticate yet — buffer locally
+            });
+            // After successful login the dashboard will re-init with token.
+        }
+    </script>
+
+    <script>
+        // No language switcher on login page — read stored language and apply translations only
         function initLanguage() {
             const lang = getLanguage();
-            updateLanguageButton(lang);
             updatePageText(lang);
-        }
-
-        function switchLanguage(lang) {
-            setLanguage(lang);
-            updateLanguageButton(lang);
-            updatePageText(lang);
-        }
-
-        function updateLanguageButton(lang) {
-            document.querySelectorAll('.language-switch button').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.lang === lang);
-            });
         }
 
         function updatePageText(lang) {
-            // Update elements with data-i18n attribute
             document.querySelectorAll('[data-i18n]').forEach(el => {
                 const key = el.dataset.i18n;
                 el.textContent = t(key, lang);
             });
-
-            // Update placeholders with data-i18n-placeholder attribute
             document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
                 const key = el.dataset.i18nPlaceholder;
                 el.placeholder = t(key, lang);
             });
-
-            // Update button text if it's showing a loading state
             const submitBtn = document.getElementById('submitBtn');
             if (submitBtn.textContent === 'Signing in...') {
                 submitBtn.textContent = t('login.signin', lang);
@@ -351,13 +472,11 @@
             const element = document.getElementById(elementId);
             element.textContent = message;
             element.classList.remove('hidden');
-            element.classList.add('fade-in');
         }
 
         function hideMessage(elementId) {
             const element = document.getElementById(elementId);
             element.classList.add('hidden');
-            element.classList.remove('fade-in');
         }
 
         function clearAuthFeedback() {
@@ -391,14 +510,12 @@
             };
 
             lockMessage.classList.remove('hidden');
-            lockMessage.classList.add('fade-in');
             localStorage.setItem('auth_lock_until', lockUntilIso);
             localStorage.setItem('auth_lock_reason', t('login.accountLocked', getLanguage()));
             tick();
             lockTimer = setInterval(tick, 1000);
         }
 
-        // Check for existing lock
         const storedLockUntil = localStorage.getItem('auth_lock_until');
         if (storedLockUntil && Date.now() < new Date(storedLockUntil).getTime()) {
             startLockCountdown(storedLockUntil);
@@ -406,32 +523,26 @@
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             const submitBtn = document.getElementById('submitBtn');
             const lang = getLanguage();
-            
+
             clearAuthFeedback();
             submitBtn.disabled = true;
             submitBtn.textContent = t('login.signin', lang);
-            
+
             try {
                 const response = await fetch('/api/login', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ 
-                        username: username.trim(), 
-                        password: password.trim() 
-                    }),
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: username.trim(), password: password.trim() }),
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (response.ok) {
-                    // Store token
                     localStorage.setItem('access_token', data.access_token);
                     localStorage.setItem('user_id', data.user_id);
                     localStorage.setItem('username', data.username);
@@ -439,8 +550,7 @@
                     localStorage.setItem('loginTime', Date.now().toString());
                     localStorage.removeItem('auth_lock_until');
                     localStorage.removeItem('auth_lock_reason');
-                    
-                    // Redirect to dashboard
+
                     window.location.href = '/dashboard';
                 } else {
                     document.getElementById('loginForm').classList.add('shake');
@@ -459,8 +569,7 @@
                         submitBtn.disabled = true;
                         submitBtn.textContent = t('login.locked', lang);
                     }
-                    
-                    // Clear password field on error
+
                     document.getElementById('password').value = '';
                 }
             } catch (error) {
@@ -477,12 +586,10 @@
             }
         });
 
-        // Listen for language change events
         window.addEventListener('languageChanged', (e) => {
             updatePageText(e.detail.language);
         });
 
-        // Initialize on page load
         initLanguage();
     </script>
 </body>

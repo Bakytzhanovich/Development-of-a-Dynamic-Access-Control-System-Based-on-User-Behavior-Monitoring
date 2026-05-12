@@ -79,46 +79,82 @@ def calculate_mouse_velocity(mouse_movements: list) -> float:
 
 def detect_linear_mouse_movement(mouse_movements: list) -> bool:
     """
-    Detect if mouse movement is too linear (suggesting bot behavior)
-    Returns True if movement appears bot-like
+    Detect if mouse movement is too linear (bot-like).
+
+    Returns True only when the trajectory is BOTH highly directional AND has
+    very low directional variance. Real humans, even when moving the cursor
+    in a straight line toward a target, produce micro-corrections that show
+    up as variance in consecutive-segment cosines. Bots / scripted curves
+    produce a near-constant cosine close to 1.
+
+    Earlier version flagged any deliberate human motion (e.g. moving toward a
+    button) as a bot because it only checked the mean cosine with a low
+    threshold (0.75), and short jitter segments dominated the average.
     """
-    if not mouse_movements or len(mouse_movements) < 3:
+    if not mouse_movements or len(mouse_movements) < 8:
         print(f"[MOUSE DEBUG] Not enough movements: {len(mouse_movements) if mouse_movements else 0}")
         return False
-    
-    # Calculate angles between consecutive movements
-    angles = []
+
+    # Only count segments that carry real directional information. Sub-pixel
+    # noise has random direction and would otherwise dominate the statistic.
+    MIN_SEGMENT_PX = 2.0
+
+    cosines = []
+    speeds = []
     for i in range(2, len(mouse_movements)):
-        p1 = mouse_movements[i-2]
-        p2 = mouse_movements[i-1]
+        p1 = mouse_movements[i - 2]
+        p2 = mouse_movements[i - 1]
         p3 = mouse_movements[i]
-        
+
         dx1 = p2.get("x", 0) - p1.get("x", 0)
         dy1 = p2.get("y", 0) - p1.get("y", 0)
         dx2 = p3.get("x", 0) - p2.get("x", 0)
         dy2 = p3.get("y", 0) - p2.get("y", 0)
-        
-        # Calculate angle between vectors
-        if dx1 != 0 or dy1 != 0:
-            angle1 = (dx1**2 + dy1**2)**0.5
-            angle2 = (dx2**2 + dy2**2)**0.5
-            if angle1 > 0 and angle2 > 0:
-                dot_product = dx1 * dx2 + dy1 * dy2
-                cos_angle = dot_product / (angle1 * angle2)
-                angles.append(cos_angle)
-    
-    if not angles:
-        print(f"[MOUSE DEBUG] No angles calculated from {len(mouse_movements)} movements")
+        dt2 = p3.get("timestamp", 0) - p2.get("timestamp", 0)
+
+        m1 = (dx1 * dx1 + dy1 * dy1) ** 0.5
+        m2 = (dx2 * dx2 + dy2 * dy2) ** 0.5
+        if m1 < MIN_SEGMENT_PX or m2 < MIN_SEGMENT_PX:
+            continue
+
+        cos_angle = (dx1 * dx2 + dy1 * dy2) / (m1 * m2)
+        if cos_angle > 1.0:
+            cos_angle = 1.0
+        elif cos_angle < -1.0:
+            cos_angle = -1.0
+        cosines.append(cos_angle)
+
+        if dt2 > 0:
+            speeds.append(m2 / dt2)
+
+    if len(cosines) < 8:
+        print(f"[MOUSE DEBUG] Not enough informative segments: {len(cosines)}")
         return False
-    
-    # If angles are too consistent (high correlation), might be a bot
-    avg_angle_correlation = statistics.mean(angles)
-    # Threshold: if correlation > 0.75, movement is suspiciously linear
-    # (0.9 was too strict, normal fast straight lines were not detected)
-    is_linear = avg_angle_correlation > 0.75
-    
-    print(f"[MOUSE DEBUG] Movements: {len(mouse_movements)}, Angles: {len(angles)}, Avg correlation: {avg_angle_correlation:.3f}, Linear: {is_linear}")
-    
+
+    mean_cos = statistics.mean(cosines)
+    sd_cos = statistics.stdev(cosines) if len(cosines) >= 2 else 0.0
+
+    # Coefficient of variation of speed — humans have
+    # acceleration/deceleration even on a straight drag, so CV is non-trivial
+    # (typically > 0.15). Bots produce near-constant speed (CV ~ 0).
+    speed_cv = 0.0
+    if len(speeds) >= 4:
+        m_speed = statistics.mean(speeds)
+        if m_speed > 0:
+            speed_cv = statistics.stdev(speeds) / m_speed
+
+    # Robotic trajectory must satisfy ALL of:
+    #   - mean cosine extremely close to 1 (segments perfectly aligned)
+    #   - directional std-dev essentially zero (no micro-corrections)
+    #   - speed coefficient of variation essentially zero (no accel/decel)
+    # Any one of these failing is normal human behavior.
+    is_linear = mean_cos > 0.99 and sd_cos < 0.01 and speed_cv < 0.05
+
+    print(
+        f"[MOUSE DEBUG] segments={len(cosines)} mean_cos={mean_cos:.3f} "
+        f"sd_cos={sd_cos:.3f} speed_cv={speed_cv:.3f} linear={is_linear}"
+    )
+
     return is_linear
 
 
