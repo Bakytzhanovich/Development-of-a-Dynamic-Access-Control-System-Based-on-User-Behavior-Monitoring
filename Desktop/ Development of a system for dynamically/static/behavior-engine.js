@@ -185,6 +185,82 @@
         }
 
         dispatch('behaviorStateChange', snapshot());
+
+        // Hand the Critical state off to the server so the lock becomes
+        // authoritative (works even if the client refuses to react to it).
+        if (state.threatLevel === 'Critical') {
+            maybeEscalate();
+        }
+    }
+
+    // ============================================================
+    // Server-side escalation
+    // ============================================================
+    // When local aggregate risk hits Critical, ask the backend to lock the
+    // session via /api/escalate. The backend response is shaped like a
+    // /api/analyze-behavior payload so the dashboard can run it through
+    // applyDecision() and trigger the existing 5-second kill-switch.
+    let escalating = false;
+    let lastEscalationAt = 0;
+    const ESCALATION_COOLDOWN_MS = 30000;
+
+    async function maybeEscalate() {
+        if (!state.autoLog) return;
+        if (escalating) return;
+        if (now() - lastEscalationAt < ESCALATION_COOLDOWN_MS) return;
+        escalating = true;
+        try {
+            // Take the top 3 distinct categories by score…
+            const topCategories = Object.entries(state.scores)
+                .filter(([, v]) => v > 0)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 3)
+                .map(([cat]) => cat);
+
+            // …and the freshest matching reasons from the anomaly feed.
+            const reasons = [];
+            const seenCats = new Set();
+            for (const item of state.feed) {
+                if (reasons.length >= 3) break;
+                if (item && item.message && !seenCats.has(item.category)) {
+                    reasons.push(item.message);
+                    seenCats.add(item.category);
+                }
+            }
+            if (reasons.length === 0) {
+                reasons.push('Aggregate behavioral risk ' + Math.round(state.riskScore));
+            }
+
+            const res = await fetch('/api/escalate', {
+                method: 'POST',
+                headers: authHeader(),
+                keepalive: true,
+                body: JSON.stringify({
+                    risk_score: state.riskScore,
+                    reasons: reasons,
+                    top_categories: topCategories,
+                    threat_level: state.threatLevel,
+                }),
+            });
+
+            const data = await res.json().catch(() => null);
+            if (data) {
+                lastEscalationAt = now();
+                // Let the dashboard pipe this through its existing
+                // applyDecision() flow (paints the cards red, starts the
+                // 5-second kill-switch, locks the UI).
+                dispatch('behaviorCriticalEscalation', data);
+            }
+        } catch (e) {
+            // Network failure — try again on the next Critical tick.
+        } finally {
+            escalating = false;
+        }
+    }
+
+    function resetEscalation() {
+        lastEscalationAt = 0;
+        escalating = false;
     }
 
     function snapshot() {
@@ -208,14 +284,31 @@
     // Anomaly reporting
     // ============================================================
 
+    // Per-category cooldown so that fast-firing detectors (e.g. click spam,
+    // tab switching) don't post 4-5 identical anomalies to the feed within
+    // the same second. We let each category fire once every REPORT_COOLDOWN
+    // milliseconds; critical-severity events ignore the cooldown so real
+    // attacks are never silenced.
+    const REPORT_COOLDOWN_MS = 4000;
+    const lastReportAt = {};
+
     function report(category, message, riskDelta, severity, extra) {
         severity = severity || (riskDelta >= 25 ? SEVERITY.CRITICAL
             : riskDelta >= 15 ? SEVERITY.HIGH
             : riskDelta >= 8 ? SEVERITY.MEDIUM
             : SEVERITY.LOW);
 
+        const tNow = now();
+        const last = lastReportAt[category] || 0;
+        if (severity !== SEVERITY.CRITICAL && tNow - last < REPORT_COOLDOWN_MS) {
+            // Quietly drop the duplicate — score state was already updated by
+            // the caller, so the dashboard still reflects the new risk.
+            return null;
+        }
+        lastReportAt[category] = tNow;
+
         const item = {
-            id: 'bx_' + now() + '_' + Math.floor(Math.random() * 9999),
+            id: 'bx_' + tNow + '_' + Math.floor(Math.random() * 9999),
             ts: new Date().toISOString(),
             category,
             severity,
@@ -652,9 +745,13 @@
                 const wStart = t - 60000;
                 while (switches.length && switches[0] < wStart) switches.shift();
 
-                if (switches.length >= 5) {
+                // Real users frequently alt-tab while working. Old thresholds
+                // (3 / 5 in 60s) were tripped by ordinary multitasking and
+                // flooded the timeline. New thresholds match typical SOC
+                // tuning — only sustained tab cycling counts.
+                if (switches.length >= 15) {
                     bump(20, 'Frequent tab switching (' + switches.length + ' in 60s)', SEVERITY.MEDIUM);
-                } else if (switches.length >= 3) {
+                } else if (switches.length >= 10) {
                     bump(10, 'Repeated tab switching');
                 }
             } else if (hiddenSince) {
@@ -675,7 +772,7 @@
             switches.push(t);
             const wStart = t - 60000;
             while (switches.length && switches[0] < wStart) switches.shift();
-            if (switches.length >= 6) {
+            if (switches.length >= 12) {
                 bump(15, 'Repeated window blur events');
             }
         }
@@ -893,7 +990,12 @@
     // MODULE 9 — Impossible Travel (mock)
     // ============================================================
     const travelModule = (function () {
-        // Geo-IP mock: derive a country from a deterministic hash of stored IP
+        // Geo-IP mock. We previously picked the country randomly from a hash
+        // of the user id, which produced absurd output (timezone Asia/Almaty
+        // but country = "Russia"). Now the "current" country is derived from
+        // the browser's IANA timezone, which is what a real Geo-IP service
+        // would return for a local user. Hash-based picking is only used as
+        // a fallback when the timezone is unknown.
         const POOL = [
             { country: 'Kazakhstan', code: 'KZ' },
             { country: 'Russia', code: 'RU' },
@@ -905,15 +1007,48 @@
             { country: 'China', code: 'CN' },
         ];
 
+        // Coarse timezone → country mapping. Covers the locations we care
+        // about for the demo; anything else falls back to the hash pick.
+        const TZ_COUNTRY = {
+            'Asia/Almaty': { country: 'Kazakhstan', code: 'KZ' },
+            'Asia/Aqtobe': { country: 'Kazakhstan', code: 'KZ' },
+            'Asia/Atyrau': { country: 'Kazakhstan', code: 'KZ' },
+            'Asia/Qyzylorda': { country: 'Kazakhstan', code: 'KZ' },
+            'Asia/Oral': { country: 'Kazakhstan', code: 'KZ' },
+            'Europe/Moscow': { country: 'Russia', code: 'RU' },
+            'Europe/Samara': { country: 'Russia', code: 'RU' },
+            'Asia/Yekaterinburg': { country: 'Russia', code: 'RU' },
+            'Asia/Novosibirsk': { country: 'Russia', code: 'RU' },
+            'Europe/Berlin': { country: 'Germany', code: 'DE' },
+            'America/New_York': { country: 'United States', code: 'US' },
+            'America/Los_Angeles': { country: 'United States', code: 'US' },
+            'America/Chicago': { country: 'United States', code: 'US' },
+            'Asia/Singapore': { country: 'Singapore', code: 'SG' },
+            'Europe/London': { country: 'United Kingdom', code: 'GB' },
+            'Europe/Istanbul': { country: 'Turkey', code: 'TR' },
+            'Asia/Shanghai': { country: 'China', code: 'CN' },
+            'Asia/Hong_Kong': { country: 'China', code: 'CN' },
+        };
+
         function pickFromHash(hash) {
             let n = 0;
             for (let i = 0; i < hash.length; i++) n = (n * 31 + hash.charCodeAt(i)) >>> 0;
             return POOL[n % POOL.length];
         }
 
+        function detectCountry() {
+            try {
+                const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                if (tz && TZ_COUNTRY[tz]) return TZ_COUNTRY[tz];
+            } catch (e) { /* noop */ }
+            return null;
+        }
+
         function check(ip) {
             ip = ip || ('mock-' + (state.userId || 'u'));
-            const current = pickFromHash(hashString(ip + '|' + (state.deviceFp ? state.deviceFp.hash : '')));
+            // Prefer real timezone-based country; only roll the dice if the
+            // browser doesn't tell us where it is.
+            const current = detectCountry() || pickFromHash(hashString(ip + '|' + (state.deviceFp ? state.deviceFp.hash : '')));
             let last = null;
             try { last = JSON.parse(localStorage.getItem(STORAGE_KEYS.lastCountry) || 'null'); } catch (e) { last = null; }
 
@@ -1001,11 +1136,19 @@
         navigationModule.record();
         travelModule.check();
 
-        // Tick — gradual decay so scores don't stick at max forever after a single event
+        // Tick — gradual decay so scores don't stick at max forever after a
+        // single event. Without this, paste / focus / abuse / mouse scores
+        // would remain at 100 for the rest of the session.
         tickTimer = setInterval(() => {
             focusModule.decay();
             sessionModule.tick();
             mouseModule.decay();
+            // Paste & abuse have no dedicated module decay function, so we
+            // bleed them off here directly. Half-life ~32s.
+            state.scores.paste = clamp(state.scores.paste - 1.5, 0, 100);
+            state.scores.abuse = clamp(state.scores.abuse - 1.5, 0, 100);
+            // Click score should also gradually fade when no clicks happen.
+            state.scores.click = clamp(state.scores.click - 2, 0, 100);
             recomputeAggregate();
         }, 4000);
 
@@ -1023,6 +1166,7 @@
         navigationModule.reset();
         abuseModule.reset();
         travelModule.reset();
+        resetEscalation();
         state.feed.length = 0;
         state.threatCounts = {};
         try { localStorage.removeItem(STORAGE_KEYS.baseline); } catch (e) { /* noop */ }

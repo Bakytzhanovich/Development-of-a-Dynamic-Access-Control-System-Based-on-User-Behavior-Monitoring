@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Dynamic Access Control System</title>
+    <title>My Session Security - Dynamic Access Control System</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700;900&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="/static/i18n.js"></script>
+    <script src="/static/i18n.js?v={{ static_version }}"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -566,7 +566,7 @@
                 <div class="brand-mark">A</div>
                 <div>
                     <div class="text-[9px] uppercase tracking-[0.25em] text-[var(--accent-red)] font-bold leading-none mb-1">ACCESS CONTROL</div>
-                    <div class="text-sm font-semibold text-[var(--text)] leading-none" data-i18n="nav.dashboard">Dashboard</div>
+                    <div class="text-sm font-semibold text-[var(--text)] leading-none" data-i18n="dashboard.title">My Session Security</div>
                 </div>
             </div>
             <div class="flex items-center gap-3 text-sm">
@@ -608,6 +608,17 @@
     <main class="max-w-7xl mx-auto px-4 py-5 space-y-4">
         <!-- Status Alert -->
         <div id="statusAlert" class="hidden status-bar"></div>
+
+        <!-- Step-up Authentication Prompt — surfaces for ANY role when the
+             policy requires MFA. Lives outside the admin-only Demo Scenario
+             card so Employees/Auditors can also resolve their own MFA. -->
+        <div id="verifyCard" class="hidden card p-3 flex items-center justify-between gap-3">
+            <div class="min-w-0">
+                <div class="text-[10px] uppercase tracking-[0.18em] text-[var(--warning)] font-bold mb-1" data-i18n="dashboard.stepUpRequired">Step-up authentication required</div>
+                <div class="text-xs text-[var(--text-secondary)]" data-i18n="dashboard.stepUpHint">Verify your identity to restore full access to sensitive data.</div>
+            </div>
+            <button id="verifyBtn" class="btn btn-primary flex-shrink-0" data-i18n="dashboard.verify">Verify Identity</button>
+        </div>
 
         <!-- Session Context & Access Decision -->
         <div class="grid lg:grid-cols-4 gap-3">
@@ -804,24 +815,28 @@
             </div>
         </div>
 
-        <!-- Demo Scenarios -->
-        <div class="card p-4">
-            <h3 class="section-title" data-i18n="dashboard.demoScenario">Demo Scenario Control Panel</h3>
+        <!-- Demo Scenarios — admin/dev-only. The block is hidden by default
+             and revealed in JS only when role === 'admin'. -->
+        <div id="demoScenarioCard" class="hidden card p-4">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="section-title m-0" data-i18n="dashboard.demoScenario">Demo Scenario Control Panel</h3>
+                <span class="text-[10px] uppercase tracking-widest text-[var(--text-muted)]" data-i18n="dashboard.adminOnly">Admin only</span>
+            </div>
             <div class="flex flex-wrap gap-2">
                 <button class="scenarioBtn btn btn-secondary" data-scenario="normal" data-i18n="dashboard.normalScenario">Normal</button>
                 <button class="scenarioBtn btn btn-secondary" data-scenario="suspicious" data-i18n="dashboard.suspiciousScenario">Suspicious</button>
                 <button class="scenarioBtn btn btn-secondary" data-scenario="high-risk" data-i18n="dashboard.highRiskScenario">High-Risk</button>
                 <button id="resetBaselineBtn" class="btn btn-secondary" data-i18n="dashboard.resetBaseline">Reset Baseline</button>
                 <button id="unlockSessionBtn" class="btn btn-warning">Unlock Session</button>
-                <button id="verifyBtn" class="hidden btn btn-primary" data-i18n="dashboard.verify">Verify</button>
             </div>
         </div>
 
-        <!-- Behavioral Engine Test Panel — triggers each detection module for demo -->
-        <div class="card p-4">
+        <!-- Behavioral Engine Test Panel — admin/dev-only triggers for each
+             detection module. Hidden for non-admin roles. -->
+        <div id="behaviorEngineTestPanelCard" class="hidden card p-4">
             <div class="flex items-center justify-between mb-3">
-                <h3 class="section-title m-0">Behavioral Engine Test Panel</h3>
-                <span class="text-[10px] uppercase tracking-widest text-[var(--text-muted)]">trigger detection modules</span>
+                <h3 class="section-title m-0" data-i18n="dashboard.engineTestPanel">Behavioral Engine Test Panel</h3>
+                <span class="text-[10px] uppercase tracking-widest text-[var(--text-muted)]" data-i18n="dashboard.triggerDetection">trigger detection modules</span>
             </div>
             <div class="flex flex-wrap gap-2">
                 <button class="bxSimBtn btn btn-secondary" data-bxsim="typing">Trigger Typing Anomaly</button>
@@ -852,10 +867,10 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-    <script src="/static/three-bg.js"></script>
-    <script src="/static/tilt.js"></script>
-    <script src="/static/sensor.js"></script>
-    <script src="/static/behavior-engine.js"></script>
+    <script src="/static/three-bg.js?v={{ static_version }}"></script>
+    <script src="/static/tilt.js?v={{ static_version }}"></script>
+    <script src="/static/sensor.js?v={{ static_version }}"></script>
+    <script src="/static/behavior-engine.js?v={{ static_version }}"></script>
     <script>
         function initLanguage() {
             const lang = getLanguage();
@@ -894,12 +909,43 @@
 
         if (!token) window.location.href = '/login';
 
+        // Wipe per-user BehaviorEngine state when the logged-in user changes
+        // (e.g. admin logged out → employee logged in). Otherwise the new
+        // user inherits the previous user's typing baseline, device hash,
+        // last-known country, etc. — which causes phantom anomalies on the
+        // first page load.
+        try {
+            const previousUserId = localStorage.getItem('bx_last_user_id');
+            if (previousUserId && previousUserId !== userId) {
+                ['bx_last_country', 'bx_device_fingerprint', 'bx_nav_history',
+                 'bx_typing_baseline', 'bx_engine_start']
+                    .forEach(k => localStorage.removeItem(k));
+            }
+            if (userId) localStorage.setItem('bx_last_user_id', userId);
+        } catch (e) { /* noop */ }
+
         document.getElementById('usernameDisplay').textContent = username || 'unknown';
         document.getElementById('roleDisplay').textContent = role.charAt(0).toUpperCase() + role.slice(1);
         document.getElementById('userIdDisplay').textContent = userId || '--';
 
-        if (role === 'admin') {
+        // Admin-only UI gating. The demo / simulation cards are hidden by
+        // default and only revealed for the admin role (or when running in
+        // an explicit demo mode flagged via localStorage). Employees and
+        // Auditors get a clean personal-session monitor with no test
+        // buttons, no Reset Baseline, no Unlock Session, no Admin Analytics
+        // link, and no Trigger * controls.
+        const isAdmin = role === 'admin';
+        const demoMode = localStorage.getItem('demo_mode') === '1';
+        const showAdminTools = isAdmin || demoMode;
+
+        if (isAdmin) {
             document.getElementById('adminAnalyticsLink').classList.remove('hidden');
+        }
+        if (showAdminTools) {
+            const demoCard = document.getElementById('demoScenarioCard');
+            const testCard = document.getElementById('behaviorEngineTestPanelCard');
+            if (demoCard) demoCard.classList.remove('hidden');
+            if (testCard) testCard.classList.remove('hidden');
         }
 
         // Critical Mode
@@ -938,7 +984,13 @@
             return fetch(path, { method, headers, body: body ? JSON.stringify(body) : null });
         }
 
+        // Drop consecutive duplicate timeline entries — the backend polls
+        // /api/analyze-behavior every 10s and used to log the same
+        // "Decision: Limited access" line forever, drowning out real events.
+        let _lastTimelineMessage = '';
         function logEvent(message) {
+            if (message === _lastTimelineMessage) return;
+            _lastTimelineMessage = message;
             const tNow = new Date().toLocaleTimeString();
             const row = document.createElement('div');
             row.className = 'timeline-row';
@@ -959,6 +1011,17 @@
             localStorage.removeItem('username');
             localStorage.removeItem('role');
             localStorage.removeItem('loginTime');
+            // Clear behavior-engine state that should not leak across users.
+            // Otherwise an admin's demo-triggered Impossible Travel / Device
+            // Change would haunt the next user (Employee/Auditor) and fire
+            // false-positive anomalies at first paint.
+            try {
+                localStorage.removeItem('bx_last_country');
+                localStorage.removeItem('bx_device_fingerprint');
+                localStorage.removeItem('bx_nav_history');
+                localStorage.removeItem('bx_typing_baseline');
+                localStorage.removeItem('bx_engine_start');
+            } catch (e) { /* noop */ }
             window.location.href = '/login';
         }
 
@@ -1154,18 +1217,21 @@
             });
             document.getElementById('explainConclusion').textContent = explain.conclusion || '';
 
-            const verifyBtn = document.getElementById('verifyBtn');
+            const verifyCard = document.getElementById('verifyCard');
             const overlay = document.getElementById('restrictedOverlay');
             const sensitive = document.getElementById('sensitiveDataContainer');
 
             if (raw.requires_mfa) {
-                verifyBtn.classList.remove('hidden');
+                // Show the dedicated MFA card to ANY role — Employees and
+                // Auditors used to have no way to verify since the button
+                // lived inside the admin-only Demo Scenario panel.
+                if (verifyCard) verifyCard.classList.remove('hidden');
                 sensitive.classList.add('blur-sm');
                 document.getElementById('accountBalance').textContent = '$***,***.**';
                 document.getElementById('lastLoginIp').textContent = '***.***.*.*';
                 logEvent(t('dashboard.verify', getLanguage()));
             } else {
-                verifyBtn.classList.add('hidden');
+                if (verifyCard) verifyCard.classList.add('hidden');
             }
 
             if (raw.kill_switch || risk > 70) {
@@ -1464,6 +1530,26 @@
             // Live updates
             window.addEventListener('behaviorStateChange', (e) => bxUpdate(e.detail));
             window.addEventListener('behaviorAnomaly', (e) => bxAppendFeed(e.detail));
+
+            // When the local engine hits Critical it asks the backend to
+            // lock the session and the backend replies with a payload
+            // shaped like /api/analyze-behavior. Pipe it through the
+            // existing decision flow so all the cards (risk, breakdown,
+            // reasons, kill-switch banner) light up exactly as they would
+            // for a server-detected attack.
+            window.addEventListener('behaviorCriticalEscalation', (e) => {
+                if (!e || !e.detail) return;
+                try {
+                    applyDecision(e.detail);
+                    if (e.detail.privileged) {
+                        logEvent('[PRIVILEGED] Account compromise — session locked');
+                    } else {
+                        logEvent('Behavioral engine escalated to server — session locked');
+                    }
+                } catch (err) {
+                    console.error('Failed to apply escalation payload:', err);
+                }
+            });
         }
 
         // Hook protected resource clicks into abuse detector

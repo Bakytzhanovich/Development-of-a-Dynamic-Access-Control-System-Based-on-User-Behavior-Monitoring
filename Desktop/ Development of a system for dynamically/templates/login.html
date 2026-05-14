@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700;900&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="/static/i18n.js"></script>
+    <script src="/static/i18n.js?v={{ static_version }}"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -423,8 +423,8 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-    <script src="/static/three-bg.js"></script>
-    <script src="/static/behavior-engine.js"></script>
+    <script src="/static/three-bg.js?v={{ static_version }}"></script>
+    <script src="/static/behavior-engine.js?v={{ static_version }}"></script>
 
     <script>
         // Silent behavioral analysis during authentication.

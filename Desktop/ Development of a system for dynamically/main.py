@@ -77,6 +77,17 @@ class SecurityEventRequest(BaseModel):
     risk_score: Optional[float] = 0.0
 
 
+class EscalateRequest(BaseModel):
+    """Payload sent by the client BehaviorEngine when its aggregate
+    risk crosses the Critical threshold. The server uses this to turn a
+    purely client-side observation into an authoritative session lock."""
+
+    risk_score: float
+    reasons: list[str] = []
+    top_categories: list[str] = []
+    threat_level: Optional[str] = "Critical"
+
+
 app = FastAPI(title="Dynamic Access Control System")
 templates = Jinja2Templates(directory="templates")
 
@@ -107,6 +118,16 @@ Base.metadata.create_all(bind=engine)
 STEP_UP_EXPIRY: dict[int, datetime] = {}
 BLOCKED_USERS: dict[int, datetime] = {}
 ADMIN_FORCED_STEP_UP: dict[int, datetime] = {}
+
+# Most recent /api/escalate call per user. Used to throttle re-escalations
+# (the client BehaviorEngine could re-fire while still in Critical state).
+LAST_ESCALATION_AT: dict[int, datetime] = {}
+
+# Reasons captured during the last critical escalation. Surfaced back in
+# /api/analyze-behavior so the dashboard's "Why system made this decision"
+# panel reflects the actual local-engine signals instead of the stale
+# "No anomalies detected".
+LAST_ESCALATION_INFO: dict[int, dict] = {}
 LOGIN_COOLDOWNS: dict[str, datetime] = {}
 AUTH_LOGIN_WINDOW: dict[str, list[datetime]] = {}
 
@@ -1181,12 +1202,18 @@ def build_admin_user_snapshot(db: Session, user: User) -> dict:
 
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse(
+        "login.html",
+        {"request": request, "static_version": static_version()},
+    )
 
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse(
+        "login.html",
+        {"request": request, "static_version": static_version()},
+    )
 
 
 @app.post("/api/login", response_model=LoginResponse)
@@ -1284,7 +1311,10 @@ async def set_access_cookie_middleware(request: Request, call_next):
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request):
-    return templates.TemplateResponse("dashboard.html", {"request": request, "username": "User"})
+    return templates.TemplateResponse(
+        "dashboard.html",
+        {"request": request, "username": "User", "static_version": static_version()},
+    )
 
 
 @app.get("/admin/analytics", response_class=HTMLResponse)
@@ -1328,18 +1358,41 @@ async def analyze_behavior(
                     "lock_session",
                     100.0,
                 )
-                return JSONResponse(
-                    status_code=423,
-                    content={
-                        "status": "locked",
-                        "message": "Session locked due to critical risk",
-                        "risk_score": 100,
-                        "lock_expires_in": int(time_remaining),
-                    },
-                )
+                # Surface the original escalation context (reasons / breakdown /
+                # privileged flag) so the dashboard's "Why system made this
+                # decision" panel mirrors the real signals instead of falling
+                # back to "No anomalies detected". The shape matches a normal
+                # /api/analyze-behavior response so the existing
+                # applyDecision() can render it without special-casing.
+                cached = LAST_ESCALATION_INFO.get(user_id) or {}
+                content = {
+                    "status": "locked",
+                    "message": cached.get("message", "Session locked due to critical risk"),
+                    "risk_score": cached.get("risk_score", 100),
+                    "trust_score": cached.get("trust_score", 0),
+                    "risk_level": "Critical",
+                    "access_decision": cached.get("access_decision", "Session locked due to critical risk"),
+                    "final_access_decision": cached.get("access_decision", "Session locked due to critical risk"),
+                    "data_protection": "Hidden",
+                    "resource_status": "locked",
+                    "requires_mfa": False,
+                    "threat_type": cached.get("threat_type", "Possible session hijacking"),
+                    "kill_switch": True,
+                    "reasons": cached.get("reasons", ["Session locked due to critical risk"]),
+                    "score_breakdown": cached.get("score_breakdown", {}),
+                    "privileged": cached.get("privileged", False),
+                    "explainability": cached.get("explainability", {
+                        "highlights": ["Session locked due to critical risk"],
+                        "conclusion": "Session terminated by behavioral risk engine.",
+                    }),
+                    "lock_expires_in": int(time_remaining),
+                }
+                return JSONResponse(status_code=423, content=content)
             else:
                 # Lock expired, remove it
                 BLOCKED_USERS.pop(user_id, None)
+                LAST_ESCALATION_INFO.pop(user_id, None)
+                LAST_ESCALATION_AT.pop(user_id, None)
 
         risk_result = calculate_risk_score(data, user_id, client_ip, db)
         trust_score = max(0, 100 - float(risk_result["risk_score"]))
@@ -1593,7 +1646,143 @@ async def unlock_session(
     user_id = current_user["user_id"]
     BLOCKED_USERS.pop(user_id, None)
     STEP_UP_EXPIRY.pop(user_id, None)
+    LAST_ESCALATION_AT.pop(user_id, None)
+    LAST_ESCALATION_INFO.pop(user_id, None)
     return {"status": "ok", "message": "Session unlocked successfully."}
+
+
+@app.post("/api/escalate")
+async def escalate(
+    body: EscalateRequest,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Server-side handler for the local BehaviorEngine reaching Critical
+    aggregate risk. The client side cannot be trusted to lock itself —
+    DevTools can disable JS — so we promote the observation into an
+    authoritative session lock here:
+
+      • Add user_id to BLOCKED_USERS (15 min)  → subsequent /api/* calls
+        return 423 even if the client refuses to act on this response.
+      • Write a `critical_session_terminated` row into AccessLog so the
+        admin console shows the incident.
+      • Mark privileged-role escalations specially so they surface in the
+        Priority Incidents section of admin analytics.
+      • Return a payload shaped like /api/analyze-behavior so the dashboard
+        can run it through `applyDecision()` and trigger the existing
+        5-second kill-switch animation.
+    """
+    user_id = current_user["user_id"]
+    role = current_user.get("role", "employee")
+    now = datetime.now(timezone.utc)
+    privileged = is_privileged_role(role)
+
+    risk = max(80.0, min(100.0, float(body.risk_score or 0)))
+
+    # Throttle re-escalations from the client so a Critical-state loop in
+    # the engine doesn't spam AccessLog with duplicate rows. The lock is
+    # already in place; we just return the existing state.
+    already_locked = user_id in BLOCKED_USERS and BLOCKED_USERS[user_id] > now
+    if already_locked:
+        last = LAST_ESCALATION_AT.get(user_id)
+        if last and (now - last).total_seconds() < 30:
+            cached = LAST_ESCALATION_INFO.get(user_id) or {}
+            return {
+                "status": "forbidden",
+                "kill_switch": True,
+                "blocked": True,
+                "risk_score": cached.get("risk_score", risk),
+                "trust_score": 100 - cached.get("risk_score", risk),
+                "risk_level": "Critical",
+                "access_decision": cached.get("access_decision", "Session locked due to critical behavioral risk"),
+                "final_access_decision": cached.get("access_decision", "Session locked due to critical behavioral risk"),
+                "data_protection": "Hidden",
+                "resource_status": "locked",
+                "requires_mfa": False,
+                "message": cached.get("message", "Session already locked"),
+                "reasons": cached.get("reasons", []),
+                "threat_type": cached.get("threat_type", "Suspicious behavior"),
+                "score_breakdown": cached.get("score_breakdown", {}),
+                "privileged": privileged,
+                "explainability": cached.get("explainability", {}),
+            }
+
+    LAST_ESCALATION_AT[user_id] = now
+    BLOCKED_USERS[user_id] = now + timedelta(minutes=15)
+
+    reasons = [r for r in (body.reasons or []) if isinstance(r, str) and r.strip()][:5]
+    if not reasons:
+        reasons = ["Behavioral engine reported critical aggregate risk"]
+    reasons_str = "; ".join(reasons[:3])
+
+    threat = (
+        "Privileged account compromise"
+        if privileged
+        else ("Possible session hijacking" if risk >= 90 else "Suspicious behavior")
+    )
+
+    # Persist the incident. Privileged escalations get a distinct action
+    # name so the admin console can highlight them separately.
+    action = "critical_session_terminated_privileged" if privileged else "critical_session_terminated"
+    client_ip = request.client.host if request.client else "unknown"
+    detail_text = f"Behavioral engine escalation [{', '.join(body.top_categories[:3]) or 'aggregate'}]: {reasons_str}"
+    if privileged:
+        detail_text = "[PRIVILEGED ACCOUNT] " + detail_text
+    db.add(
+        AccessLog(
+            user_id=user_id,
+            ip_address=client_ip,
+            action=action,
+            risk_score=risk,
+            details=detail_text,
+        )
+    )
+    db.commit()
+
+    decision_text = (
+        "Session locked: privileged account anomaly"
+        if privileged
+        else "Session locked due to critical behavioral risk"
+    )
+
+    payload = {
+        "status": "forbidden",
+        "kill_switch": True,
+        "blocked": True,
+        "risk_score": risk,
+        "trust_score": 100 - risk,
+        "risk_level": "Critical",
+        "access_decision": decision_text,
+        "final_access_decision": decision_text,
+        "data_protection": "Hidden",
+        "resource_status": "locked",
+        "requires_mfa": False,
+        "message": "Session locked: " + reasons_str,
+        "reasons": reasons,
+        "threat_type": threat,
+        # Surfaces in the legacy "Risk Score Breakdown" so the four cells
+        # don't read as +0 while the session is locked.
+        "score_breakdown": {
+            "Typing Anomaly": 0,
+            "Mouse Anomaly": int(risk) if "mouse" in body.top_categories or "robotic_mouse" in body.top_categories else 0,
+            "IP Change": 0,
+            "Session Anomaly": int(risk) if "session" in body.top_categories or "session_anomaly" in body.top_categories else 0,
+        },
+        "privileged": privileged,
+        "explainability": {
+            "highlights": reasons,
+            "conclusion": (
+                "Privileged account compromise suspected — automatic lock applied. "
+                "Requires another administrator to review the incident."
+                if privileged
+                else "Local behavioral engine flagged critical aggregate risk. Session terminated."
+            ),
+        },
+    }
+    LAST_ESCALATION_INFO[user_id] = payload
+    return payload
 
 
 
@@ -1842,6 +2031,10 @@ async def admin_analytics_events(
         "mfa_failed": ("Step-up authentication failed", "Access kept restricted"),
         "mfa_success": ("Step-up authentication requested", "Restrictions reduced"),
         "critical_session_terminated": ("Session locked by kill switch", "User session revoked"),
+        "critical_session_terminated_privileged": (
+            "Privileged account compromise — session locked",
+            "Privileged session revoked; admin review required",
+        ),
         "admin_session_locked": ("Session locked by admin", "User access revoked"),
         "admin_force_step_up": ("Step-up authentication requested", "Additional verification required"),
         "admin_reset_baseline": ("Baseline reset by admin", "Behavior profile cleared"),
